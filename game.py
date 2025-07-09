@@ -1,5 +1,6 @@
 import curses
 import random
+import time
 
 CHARACTERS = ("55", "BD", "1C", "E9", "FF")
 
@@ -121,15 +122,20 @@ datamines = [
 buffer = []
 max_buffer_length = 6  # Maximum length of the buffer
 
-def update_gui(stdscr, active_axis: int, last_selected: list[int], hovering: list[int], clicked=False, first=False):
+dv_firsts = [False, False, False]  # Track if the datamines animation has been executed for each datamine
+
+completed_datamines = [False, False, False]
+failed_datamines = [False, False, False]
+
+def update_gui(stdscr, active_axis: int, last_selected: list[int], hovering: list[int], time_left=None, time_given=None, start_time=None, clicked=False, first=False):
     stdscr.clear()
+    draw_time(stdscr, 0, 30)  # Placeholder for time drawing, will be updated later
     hovering_over = ""
     click_executed = False
     click_location = [0, 0]
     
     #Main GUI
     stdscr.addstr(1, 1,  "BREACH TIME REMAINING", curses.color_pair(255))
-    stdscr.addstr(2, 1,  "▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄", curses.color_pair(253))
     stdscr.addstr(4, 1,  "▄", curses.color_pair(255))
     stdscr.addstr(4, 2,   " CODE MATRIX                         ", curses.color_pair(254))
         
@@ -203,9 +209,6 @@ def update_gui(stdscr, active_axis: int, last_selected: list[int], hovering: lis
     
     #datamine completion refresh
     datamine_completed = [0, 0, 0]
-    
-    completed_datamines = [False, False, False]
-    failed_datamines = [False, False, False]
     
     # Check for sequence completion for each datamine
     for i, datamine in enumerate(datamines):
@@ -413,12 +416,32 @@ def update_gui(stdscr, active_axis: int, last_selected: list[int], hovering: lis
         arrow = "∇"
         text = arrow * (i + 1)
         y_offset = 6 + i * 2  # Offset each datamine's label to its row
+        string_INSTALLED = f"  INSTALLED                 {text:>3} DATAMINE_V{i+1}  "
+        string_FAILED = f"  FAILED                    {text:>3} DATAMINE_V{i+1}  "
         if completed_datamines[i]:
-            stdscr.addstr(y_offset, 41, f"  INSTALLED                 {text:>3} DATAMINE_V{i+1}  ", curses.color_pair(235))  # green if completed
+            for j in range(len(string_INSTALLED)):
+                stdscr.addstr(y_offset, j + 41, string_INSTALLED[j], curses.color_pair(235))
+                if not dv_firsts[i]:
+                    if time_left and time_given and start_time:
+                        elapsed_time = time.time() - start_time
+                        time_left = max(0, time_given - elapsed_time)
+                        draw_time(stdscr, time_left, time_given)  # Update time display
+                    stdscr.refresh()
+                    time.sleep(0.005)  # Slow down the rendering for visual effect
             stdscr.addstr(y, 41 + 45, "▄", curses.color_pair(233))
+            dv_firsts[i] = True  # Mark that the datamine animation has been executed
         elif failed_datamines[i]:
-            stdscr.addstr(y_offset, 41, f"  FAILED                    {text:>3} DATAMINE_V{i+1}  ", curses.color_pair(236))  # green if completed
+            for j in range(len(string_FAILED)):
+                stdscr.addstr(y_offset, j + 41, string_FAILED[j], curses.color_pair(236))
+                if not dv_firsts[i]:
+                    if time_left and time_given and start_time:
+                        elapsed_time = time.time() - start_time
+                        time_left = max(0, time_given - elapsed_time)
+                        draw_time(stdscr, time_left, time_given)  # Update time display
+                    stdscr.refresh()
+                    time.sleep(0.005)  # Slow down the rendering for visual effect
             stdscr.addstr(y, 41 + 45, "▄", curses.color_pair(234))
+            dv_firsts[i] = True  # Mark that the datamine animation has been executed
         else:
             stdscr.addstr(y_offset, 73, f"DATAMINE_V{i+1}")
             stdscr.addstr(y_offset, 69, f"{text:>3}", curses.color_pair(255))
@@ -429,7 +452,21 @@ def update_gui(stdscr, active_axis: int, last_selected: list[int], hovering: lis
     failed or completed for failed, completed in zip(failed_datamines, completed_datamines))
     
     return click_executed, click_location, finished_by_completion
-            
+
+def draw_time(stdscr, time_left, time_given):
+    seconds = int(time_left)
+    milliseconds = int((time_left - seconds) * 100)
+    time_left_str = f"{seconds:02}:{milliseconds:02}"
+        
+    stdscr.addstr(1, 34, f"{time_left_str:>5}", curses.color_pair(255))
+        
+    progress_bar_full_length = 38
+    progress_chars_count = int(progress_bar_full_length * (time_left / time_given))
+    progress_bar_str = '▄' * progress_chars_count
+    stdscr.addstr(2, 1, f"{progress_bar_str:█<{progress_bar_full_length}}", curses.color_pair(253))
+    
+    stdscr.refresh()
+          
 def main(stdscr):
     stdscr.clear()
     
@@ -447,37 +484,53 @@ def main(stdscr):
     curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
     stdscr.nodelay(True)  # Make getch non-blocking
     
-    stdscr.timeout(100)
+    stdscr.timeout(1)
     
     active_axis = 1 # 1 = horizontal, 0 = vertical
     last_selected = [0, 0] #x, y in matrix
-    previous_selected = [0, 0] #x, y in matrix
     hovering = [0, 0]
     old_hovering = [0, 0]
     update_gui(stdscr, active_axis, last_selected, hovering, first=True)
     
+    start_time = None
+    time_given = 30 #seconds
     finished_by_completion = False
+    
     while len(buffer) < 6 and finished_by_completion == False:
-            key = stdscr.getch()
-            try:
-                _, x, y, _, button = curses.getmouse()
-            except curses.error:
-                # No mouse event, or invalid event
-                x, y, button = -1, -1, 0
-
-            if key == curses.KEY_MOUSE:
-                if button & (curses.BUTTON1_PRESSED | curses.BUTTON1_CLICKED):
-                    check, location, finished_by_completion = update_gui(stdscr, active_axis, last_selected, hovering, clicked=True)
-                    if check:
-                        last_selected = location
-                        active_axis = 1 if active_axis == 0 else 0
-                        update_gui(stdscr, active_axis, last_selected, hovering)
+        if start_time:
+            elapsed_time = time.time() - start_time
+            time_left = max(0, time_given - elapsed_time)
+        else:
+            time_left = time_given
             
-            hovering = [x, y]
-            if not hovering == old_hovering:
-                _, _, finished_by_completion = update_gui(stdscr, active_axis, last_selected, hovering)
+        if start_time and time_left == 0:
+            break
+        
+        draw_time(stdscr, time_left, time_given)
+        
+        key = stdscr.getch()
+        try:
+            _, x, y, _, button = curses.getmouse()
+        except curses.error:
+            # No mouse event, or invalid event
+            x, y, button = -1, -1, 0
             
-            old_hovering = hovering
+        if key == curses.KEY_MOUSE:
+            if button & (curses.BUTTON1_PRESSED | curses.BUTTON1_CLICKED):
+                check, location, finished_by_completion = update_gui(stdscr, active_axis, last_selected, hovering, time_left=time_left, time_given=time_given, start_time=start_time, clicked=True)
+                if check:
+                    if start_time is None:
+                        start_time = time.time()
+                    last_selected = location
+                    active_axis = 1 if active_axis == 0 else 0
+                    update_gui(stdscr, active_axis, last_selected, hovering)
+            
+        hovering = [x, y]
+        if not hovering == old_hovering:
+            _, _, finished_by_completion = update_gui(stdscr, active_axis, last_selected, hovering, time_left=time_left, time_given=time_given, start_time=start_time)
+        
+        old_hovering = hovering
+        stdscr.refresh()
 
 if __name__ == "__main__":
     curses.wrapper(main)

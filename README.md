@@ -24,9 +24,10 @@
 - [x] selection of data --> add it to buffer
 - [x] make buffer render correctly
 - [x] read buffer and highlight datamines accordingly
-- [ ] when hovering over data in the datamine, corresponding data gets highlighted in th matrix
-- [ ] timer
-- [ ] finishing touches (visuals)
-- [ ] animation on completion / failiure of datamines
+- [x] when hovering over data in the datamine, corresponding data gets highlighted in th matrix
+- [x] timer
+- [x] finishing touches (visuals)
+- [x] animation on completion / failiure of datamines
 - [ ] animation on moving of datamines
-- [ ] GAMEPLAY
+- [x] GAMEPLAY
+- [ ] end of game screen
