@@ -30,5 +30,5 @@
 - [x] animation on completion / failiure of datamines
 - [x] animation on moving of datamines
 - [x] GAMEPLAY
-- [ ] FIX FLICKERING SOMEHOW
+- [x] FIX FLICKERING SOMEHOW
 - [ ] end of game screen

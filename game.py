@@ -499,6 +499,22 @@ def update_gui(stdscr, active_axis: int, last_selected: list[int], hovering: lis
     
     return click_executed, click_location, finished_by_completion
 
+def is_over_grid(pos):
+    """Check if a coordinate is within the interactive grid areas."""
+    x, y = pos
+    # Check if over the 5x5 matrix grid
+    # Each cell is 2 chars wide, with 3 chars padding (total 5).
+    # We check if the cursor is on the 2 chars of data.
+    is_over_matrix = (y >= 6 and y <= 14 and y % 2 == 0) and \
+                     (x >= 9 and x <= 33 and (x - 9) % 5 < 2)
+    
+    # Check if over the 4x3 datamine grid
+    # Each cell is 2 chars wide, with 2 chars padding (total 4).
+    is_over_datamines = (y >= 6 and y <= 10 and y % 2 == 0) and \
+                        (x >= 41 and x <= 56 and (x - 41) % 4 < 2)
+    
+    return is_over_matrix or is_over_datamines
+
 def get_datamine_completion(current_buffer, current_datamines):
     completion = [0] * len(current_datamines)
     for i, datamine in enumerate(current_datamines):
@@ -583,15 +599,13 @@ def main(stdscr):
                     update_gui(stdscr, active_axis, last_selected, hovering)
             
         hovering = [x, y]
-        if (
-            not hovering == old_hovering and (
-                ((hovering[0] >= 9 and hovering[0] <= 30) and (hovering[1] >= 6 and hovering[1] <= 14))
-                or
-                ((hovering[0] >= 41 and hovering[0] <= 55) and (hovering[1] >= 6 and hovering[1] <= 10))
-            )
-        ):
-            _, _, finished_by_completion = update_gui(stdscr, active_axis, last_selected, hovering, time_left=time_left, time_given=time_given, start_time=start_time)
-            stdscr.addstr(16, 0, f"Hovering over: {hovering}", curses.color_pair(255))
+
+        if not hovering == old_hovering:
+            # Refresh if the mouse enters or leaves a grid area.
+            if is_over_grid(hovering) or is_over_grid(old_hovering):
+                _, _, finished_by_completion = update_gui(stdscr, active_axis, last_selected, hovering, time_left=time_left, time_given=time_given, start_time=start_time)
+                stdscr.addstr(16, 0, f"Hovering over: {hovering}      ", curses.color_pair(255))
+        
         old_hovering = hovering
 
         #9,6; 30, 14 #matrix dimenstions
