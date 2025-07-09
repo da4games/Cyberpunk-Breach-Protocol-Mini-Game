@@ -7,19 +7,26 @@
 - https://chatgpt.com/
 - https://www.youtube.com/watch?v=nKcOpYEUklg
 
+
 ## Facts
 - Characters: 55, BD, 1C, E9, FF
 - 5 x 5 grid
 - start horizontal and toggle betwean vertical selection
 
+
 ## Assumptions
 - max daemon length = 4
+
 
 ## To-Do
 - [x] row/column highlighting in update_GUI 
 - [x] mouse hover effect
 - [x] selection of data --> add it to buffer
-- [ ] make buffer render correctly
-- [ ] read buffer and highlight datamines accordingly
+- [x] make buffer render correctly
+- [x] read buffer and highlight datamines accordingly
+- [ ] when hovering over data in the datamine, corresponding data gets highlighted in th matrix
+- [ ] timer
 - [ ] finishing touches (visuals)
+- [ ] animation on completion / failiure of datamines
+- [ ] animation on moving of datamines
 - [ ] GAMEPLAY
