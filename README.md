@@ -28,6 +28,7 @@
 - [x] timer
 - [x] finishing touches (visuals)
 - [x] animation on completion / failiure of datamines
-- [ ] animation on moving of datamines
+- [x] animation on moving of datamines
 - [x] GAMEPLAY
+- [ ] FIX FLICKERING SOMEHOW
 - [ ] end of game screen

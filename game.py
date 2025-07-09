@@ -124,6 +124,7 @@ max_buffer_length = 6  # Maximum length of the buffer
 
 dv_firsts = [False, False, False]  # Track if the datamines animation has been executed for each datamine
 
+datamine_completed_before = [0, 0, 0]
 completed_datamines = [False, False, False]
 failed_datamines = [False, False, False]
 
@@ -140,6 +141,7 @@ def update_gui(stdscr, active_axis: int, last_selected: list[int], hovering: lis
     stdscr.addstr(4, 2,   " CODE MATRIX                         ", curses.color_pair(254))
         
     #logic first
+    global datamine_completed_before
     gray = []
     gray_selected = []
     gray_gray = []
@@ -182,6 +184,7 @@ def update_gui(stdscr, active_axis: int, last_selected: list[int], hovering: lis
         if hovering_over in CHARACTERS:
             if len(buffer) < max_buffer_length:
                 # No need to pop from gray, just mark as used
+                datamine_completed_before = get_datamine_completion(buffer, datamines) # Store state before buffer change
                 gray_gray.append(gray_selected)
                 buffer.append(hovering_over)
                 click_location = gray_selected.copy()
@@ -208,30 +211,16 @@ def update_gui(stdscr, active_axis: int, last_selected: list[int], hovering: lis
                 green_bg.append([x_coord, i])
     
     #datamine completion refresh
-    datamine_completed = [0, 0, 0]
+    datamine_completed = get_datamine_completion(buffer, datamines)
     
     # Check for sequence completion for each datamine
     for i, datamine in enumerate(datamines):
-        completed_count = 0
-        # Check for the longest suffix of buffer that is a prefix of datamine
-        # We iterate from the longest possible match down to the shortest.
-        for length in range(min(len(buffer), len(datamine)), 0, -1):
-            buffer_suffix = buffer[-length:]
-            datamine_prefix = datamine[:length]
-            if buffer_suffix == datamine_prefix:
-                completed_count = length
-                break  # Found the longest match, no need to check shorter ones
-        
-        # Assign the final count to the correct variable
-        if not failed_datamines[i] and not completed_datamines[i]:
-            datamine_completed[i] = completed_count
-        
-        if completed_count == len(datamine) and not failed_datamines[i] and not buffer == []:
+        if datamine_completed[i] == len(datamine) and not failed_datamines[i] and not buffer == []:
             completed_datamines[i] = True
         
         # failed if the buffer is not long enough to complete the datamine
         # This means the buffer is too short to match the remaining characters in the datamine
-        if max_buffer_length - len(buffer) < len(datamine) - completed_count and not completed_datamines[i] and not buffer == []:
+        if max_buffer_length - len(buffer) < len(datamine) - datamine_completed[i] and not completed_datamines[i] and not buffer == []:
             failed_datamines[i] = True
         
     # Check for hover over datamines to highlight matrix
@@ -349,6 +338,62 @@ def update_gui(stdscr, active_axis: int, last_selected: list[int], hovering: lis
     stdscr.addstr(4, 41,  "SEUENCE REQUIRED TO UPLOAD", curses.color_pair(255))
                 
     #modular datamines
+    # --- Animation logic for datamine movement ---
+    if clicked and click_executed:
+        max_before = max(datamine_completed_before) if any(datamine_completed_before) else 0
+        max_after = max(datamine_completed) if any(datamine_completed) else 0
+        
+        # Calculate start and end offsets in character units (1 unit = 4 screen columns)
+        start_offsets = [(max_before - dc_b) for dc_b in datamine_completed_before]
+        end_offsets = [(max_after - dc_a) for dc_a in datamine_completed]
+        
+        # Determine max shift distance to set animation frames
+        max_shift = 0
+        for i in range(len(datamines)):
+            shift = abs(end_offsets[i] - start_offsets[i])
+            if shift > max_shift:
+                max_shift = shift
+        
+        animation_frames = max_shift * 4 # 4 steps per character block
+        
+        if animation_frames > 0:
+            for frame in range(animation_frames + 1):
+                # Redraw static parts of the screen for clean animation
+                # This is a simplified redraw, might need more elements if they are affected
+                stdscr.addstr(0, 41, "BUFFER", curses.color_pair(255))
+                for i_buf in range(len(buffer)): stdscr.addstr(2, 41+i_buf*4, f"{buffer[i_buf]}", curses.color_pair(255))
+                for i_buf in range(max_buffer_length - len(buffer)): stdscr.addstr(2, 61-i_buf*4, "░░", curses.color_pair(255))
+                stdscr.addstr(4, 41,  "SEUENCE REQUIRED TO UPLOAD", curses.color_pair(255))
+                for i in range(len(datamines)):
+                    y = 6 + i * 2
+                    stdscr.addstr(y, 41, " " * 42) # Clear previous datamine line
+                    stdscr.addstr(y, 73, f"DATAMINE_V{i+1}")
+                    arrow = "∇" * (i + 1)
+                    stdscr.addstr(y, 69, f"{arrow:>3}", curses.color_pair(255))
+
+
+                for i in range(len(datamines)):
+                    y = 6 + i * 2
+                    # Interpolate offset for current frame
+                    current_offset_pix = start_offsets[i] * 4 + (end_offsets[i] - start_offsets[i]) * 4 * (frame / animation_frames)
+                    
+                    if not completed_datamines[i] and not failed_datamines[i]:
+                        for j, char_data in enumerate(datamines[i]):
+                            x = 41 + round(j * 4 + current_offset_pix)
+                            
+                            is_next_char = (j == datamine_completed[i])
+                            if is_next_char:
+                                stdscr.addstr(y, x, char_data, curses.color_pair(240))
+                            elif j < datamine_completed[i]:
+                                stdscr.addstr(y, x, char_data, curses.color_pair(255))
+                            else:
+                                stdscr.addstr(y, x, char_data)
+                
+                if time_left is not None: draw_time(stdscr, time_left, time_given)
+                stdscr.refresh()
+                time.sleep(0.008)
+
+    # Final drawing of datamines after animation or for non-click updates
     line2_length = 0
     for i in range(len(datamines)):
         y = 6 + i * 2  # Calculate the y position for each row
@@ -370,8 +415,9 @@ def update_gui(stdscr, active_axis: int, last_selected: list[int], hovering: lis
         
         #viasuals
         if not completed_datamines[i] and not failed_datamines[i]:
+            max_completed = max(datamine_completed) if any(datamine_completed) else 0
             for j in range(num_chars):#j = x; i = y <-- positions in gridspaces
-                x = 41 + (j + (max(datamine_completed[0], datamine_completed[1], datamine_completed[2]) - datamine_completed[i])) * 4  # Calculate the x position for each character
+                x = 41 + (j + (max_completed - datamine_completed[i])) * 4  # Calculate the x position for each character
                 if first:
                     data = CHARACTERS[random.randint(0, 4)]
                     datamines[i].append(data)  # Store the character in the datamines list
@@ -453,6 +499,19 @@ def update_gui(stdscr, active_axis: int, last_selected: list[int], hovering: lis
     
     return click_executed, click_location, finished_by_completion
 
+def get_datamine_completion(current_buffer, current_datamines):
+    completion = [0] * len(current_datamines)
+    for i, datamine in enumerate(current_datamines):
+        completed_count = 0
+        for length in range(min(len(current_buffer), len(datamine)), 0, -1):
+            buffer_suffix = current_buffer[-length:]
+            datamine_prefix = datamine[:length]
+            if buffer_suffix == datamine_prefix:
+                completed_count = length
+                break
+        completion[i] = completed_count
+    return completion
+
 def draw_time(stdscr, time_left, time_given):
     seconds = int(time_left)
     milliseconds = int((time_left - seconds) * 100)
@@ -483,9 +542,7 @@ def main(stdscr):
     # Enable mouse tracking with all possible options
     curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
     stdscr.nodelay(True)  # Make getch non-blocking
-    
-    stdscr.timeout(1)
-    
+        
     active_axis = 1 # 1 = horizontal, 0 = vertical
     last_selected = [0, 0] #x, y in matrix
     hovering = [0, 0]
@@ -526,11 +583,22 @@ def main(stdscr):
                     update_gui(stdscr, active_axis, last_selected, hovering)
             
         hovering = [x, y]
-        if not hovering == old_hovering:
+        if (
+            not hovering == old_hovering and (
+                ((hovering[0] >= 9 and hovering[0] <= 30) and (hovering[1] >= 6 and hovering[1] <= 14))
+                or
+                ((hovering[0] >= 41 and hovering[0] <= 55) and (hovering[1] >= 6 and hovering[1] <= 10))
+            )
+        ):
             _, _, finished_by_completion = update_gui(stdscr, active_axis, last_selected, hovering, time_left=time_left, time_given=time_given, start_time=start_time)
-        
+            stdscr.addstr(16, 0, f"Hovering over: {hovering}", curses.color_pair(255))
         old_hovering = hovering
-        stdscr.refresh()
+
+        #9,6; 30, 14 #matrix dimenstions
+        #41, 6; 55, 10 #datamine dimensions
+        
+        #frame cap at 60 fps
+        time.sleep(1/60)
 
 if __name__ == "__main__":
     curses.wrapper(main)
