@@ -574,6 +574,8 @@ class game():
 
             #9,6; 30, 14 #matrix dimenstions
             #41, 6; 55, 10 #datamine dimensions
+        
+        time.sleep(2)
 
 if __name__ == "__main__":
     game_instance = game()

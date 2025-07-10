@@ -31,4 +31,4 @@
 - [x] animation on moving of datamines
 - [x] GAMEPLAY
 - [x] FIX FLICKERING SOMEHOW
-- [ ] end of game screen
+- [x] end of game screen <-- sort of
