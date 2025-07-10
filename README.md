@@ -1,4 +1,26 @@
-# Cyberpunk Netrunner Mini-Game
+# Cyberpunk 2077: Breach Protocol (ASCII Remake)
+A fan-made, terminal-based remake of the **Breach Protocol** mini-game from *Cyberpunk 2077*, built entirely in ASCII art.
+
+> ⚠️ This is a non-commercial fan project. Not affiliated with CD Projekt RED.
+
+
+## Features
+- Terminal-based ASCII interface, no GUI required
+- Recreates the buffer-matching and sequence selection mechanic
+- Randomized game boards for replayability
+- Clean-ish Python code — depending on the level of autism easy to read and extend
+
+
+## How to Play
+- You’re given a **matrix of hex codes** and a list of target sequences.
+- Select codes in alternating **row/column** pattern to fill your buffer.
+- If your selected codes match one or more target sequences, you succeed.
+- Strategy and order matter — you only have a limited number of buffer slots!
+
+
+## Installation
+Clone and run the game using the included Venv. This is especialy important on ARM-Based systems since curses isn't available for ARM-Based Python.
+
 
 ## Inspiration / Sources
 - https://www.reddit.com/r/cyberpunkgame/comments/khioc0/a_comprehensive_guide_to_breach_protocol/
@@ -6,29 +28,3 @@
 - https://cyberpunk.fandom.com/wiki/Quickhacking#Access_Points
 - https://chatgpt.com/
 - https://www.youtube.com/watch?v=nKcOpYEUklg
-
-
-## Facts
-- Characters: 55, BD, 1C, E9, FF
-- 5 x 5 grid
-- start horizontal and toggle betwean vertical selection
-
-
-## Assumptions
-- max daemon length = 4
-
-
-## To-Do
-- [x] row/column highlighting in update_GUI 
-- [x] mouse hover effect
-- [x] selection of data --> add it to buffer
-- [x] make buffer render correctly
-- [x] read buffer and highlight datamines accordingly
-- [x] when hovering over data in the datamine, corresponding data gets highlighted in th matrix
-- [x] timer
-- [x] finishing touches (visuals)
-- [x] animation on completion / failiure of datamines
-- [x] animation on moving of datamines
-- [x] GAMEPLAY
-- [x] FIX FLICKERING SOMEHOW
-- [x] end of game screen <-- sort of
