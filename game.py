@@ -38,7 +38,6 @@ class game():
         self.completed_datamines = [False, False, False]
         self.failed_datamines = [False, False, False]
 
-
     def color_init(self, stdscr):
         # Initialize colors
         curses.start_color()
@@ -366,35 +365,61 @@ class game():
                     time.sleep(0.008)
 
         # Final drawing of datamines after animation or for non-click updates
+        
+        #generate lengths of datamines
         line2_length = 0
+        num_chars = [0, 0, 0]
         for i in range(len(self.datamines)):
-            y = 6 + i * 2  # Calculate the y position for each row
-
             if first:
-                num_chars = 0
                 if i == 0:  # Line 1: 2 or 3 chars
-                    num_chars = random.choices([2, 3], weights=[80, 20], k=1)[0]
+                    num_chars[i] = random.choices([2, 3], weights=[80, 20], k=1)[0]
                 elif i == 1:  # Line 2: 3 or 4 chars
-                    num_chars = random.choices([3, 4], weights=[80, 20], k=1)[0]
-                    line2_length = num_chars  # Save the length of line 2
+                    num_chars[i] = random.choices([3, 4], weights=[80, 20], k=1)[0]
+                    line2_length = num_chars[i]  # Save the length of line 2
                 elif i == 2:  # Line 3: 3 or 4 chars, but not less than line 2
                     if line2_length >= 4:
-                        num_chars = 4  # Must be 4 if line 2 was 4
+                        num_chars[i] = 4  # Must be 4 if line 2 was 4
                     else:  # If line 2 was 3, line 3 can be 3 or 4
-                        num_chars = random.choices([3, 4], weights=[70, 30], k=1)[0]
+                        num_chars[i] = random.choices([3, 4], weights=[70, 30], k=1)[0]
             else:
-                num_chars = len(self.datamines[i])  # Use the stored characters from datamines
+                num_chars[i] = len(self.datamines[i])  # Use the stored characters from datamines
 
+        # Hex generation algorithm
+        if first:
+            # Hex generation algorithm needs tweaking
+            # last Hex of first has to be first Hex of 2 or 3
+            # last Hex of second has to be first 1 or 3 depending on previous choise
+            # last Hex of third has to be first 1 or 2 depending on previous choise
+            # 2 Options:
+            # 1 goes to 2 to 3 to 1
+            # 1 goes to 3 to 2 to 1
+            
+            for i in range(len(self.datamines)):
+                self.datamines[i] = []  # Reset the datamine list for fresh generation
+                for j in range(num_chars[i]):
+                    self.datamines[i].append(self.CHARACTERS[random.randint(0, 4)])  # Append random characters
+            
+            next_datamine = random.randint(1, 2)  # Randomly choose next datamine (1 or 2)
+            
+            if next_datamine == 1:
+                self.datamines[1][0] = self.datamines[0][-1]
+                self.datamines[2][0] = self.datamines[1][-1]
+                self.datamines[2][-1] = self.datamines[0][0]
+            elif next_datamine == 2:
+                self.datamines[2][0] = self.datamines[0][-1]
+                self.datamines[1][0] = self.datamines[2][-1]
+                self.datamines[1][-1] = self.datamines[0][0]
+            
+                    
+        for i in range(len(self.datamines)):
             #viasuals
+            y = 6 + i * 2  # Calculate the y position for each row
             if not self.completed_datamines[i] and not self.failed_datamines[i]:
                 max_completed = max(datamine_completed) if any(datamine_completed) else 0
-                for j in range(num_chars):#j = x; i = y <-- positions in gridspaces
+                for j in range(num_chars[i]):#j = x; i = y <-- positions in gridspaces
                     x = 41 + (j + (max_completed - datamine_completed[i])) * 4  # Calculate the x position for each character
-                    if first:
-                        data = self.CHARACTERS[random.randint(0, 4)]
-                        self.datamines[i].append(data)  # Store the character in the datamines list
-                    else:
-                        data = self.datamines[i][j]
+                    
+                    data = self.datamines[i][j]
 
                     highlight = False
                     is_datamine_hover = (data == datamine_hover_char and hovering[1] == y and hovering[0] >= x and hovering[0] <= x + 1)
