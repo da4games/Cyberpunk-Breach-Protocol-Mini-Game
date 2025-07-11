@@ -37,6 +37,7 @@ class game():
         self.datamine_completed_before = [0, 0, 0]
         self.completed_datamines = [False, False, False]
         self.failed_datamines = [False, False, False]
+        self.datamine_current_offsets = [0, 0, 0]  # Store current on-screen offsets
 
     def color_init(self, stdscr):
         # Initialize colors
@@ -112,7 +113,6 @@ class game():
         stdscr.addstr(4, 2,   " CODE MATRIX                         ", curses.color_pair(254))
 
         #logic first
-        global datamine_completed_before
         gray = []
         gray_selected = []
         gray_gray = []
@@ -155,7 +155,7 @@ class game():
             if hovering_over in self.CHARACTERS:
                 if len(self.buffer) < self.max_buffer_length:
                     # No need to pop from gray, just mark as used
-                    datamine_completed_before = self.get_datamine_completion(self.buffer, self.datamines) # Store state before buffer change
+                    self.datamine_completed_before = self.get_datamine_completion(self.buffer, self.datamines) # Store state before buffer change
                     gray_gray.append(gray_selected)
                     self.buffer.append(hovering_over)
                     click_location = gray_selected.copy()
@@ -196,11 +196,22 @@ class game():
 
         # Check for hover over datamines to highlight matrix
         if not first:
-            max_completed = max(datamine_completed[0], datamine_completed[1], datamine_completed[2]) if any(datamine_completed) else 0
+            # Use the same effective progress calculation as the positioning logic
+            effective_progress = []
+            for idx in range(len(self.datamines)):
+                if self.completed_datamines[idx]:
+                    effective_progress.append(len(self.datamines[idx]))  # Full completion
+                elif self.failed_datamines[idx]:
+                    effective_progress.append(self.datamine_completed_before[idx])  # Progress when it failed
+                else:
+                    effective_progress.append(datamine_completed[idx])  # Current progress
+            
+            max_completed = max(effective_progress) if any(effective_progress) else 0
             for i_data, datamine in enumerate(self.datamines):
                 y_datamine = 6 + i_data * 2
                 if hovering[1] == y_datamine:
-                    x_offset = max_completed - datamine_completed[i_data]
+                    # Use current offset from datamine_current_offsets for consistency
+                    x_offset = self.datamine_current_offsets[i_data]
                     for j_data, char_data in enumerate(datamine):
                         x_datamine = 41 + (j_data + x_offset) * 4
                         if hovering[0] >= x_datamine and hovering[0] <= x_datamine + 1:
@@ -234,7 +245,7 @@ class game():
                 elif is_gray_gray and is_gray:
                     stdscr.addstr(y, x, data, curses.color_pair(247))  # used cell on active axis
                 elif is_gray_gray and is_green_bg:
-                    stdscr.addstr(y, x, data, curses.color_pair(242))  # used cell on inactive axis
+                    stdscr.addstr(y, x, data, curses.color_pair(243))  # used cell on inactive axis: dark green bg, gray_gray as fg
                 elif is_gray and is_green_bg: # Intersection of active and potential axes
                     stdscr.addstr(y, x, data, curses.color_pair(252)) # Draw as active axis
                 elif is_gray:
@@ -311,47 +322,128 @@ class game():
         #modular datamines
         # --- Animation logic for datamine movement ---
         if clicked and click_executed:
-            max_before = max(self.datamine_completed_before) if any(self.datamine_completed_before) else 0
-            max_after = max(datamine_completed) if any(datamine_completed) else 0
+            # This is the primary animation loop that handles both shifting and the "swoop-in" text.
+            # It ensures all datamines are drawn on every frame to prevent disappearing.
 
-            # Calculate start and end offsets in character units (1 unit = 4 screen columns)
-            start_offsets = [(max_before - dc_b) for dc_b in self.datamine_completed_before]
-            end_offsets = [(max_after - dc_a) for dc_a in datamine_completed]
+            max_completed_after = max(datamine_completed) if any(datamine_completed) else 0
+            
+            # 1. Calculate target offsets for all datamines
+            # If no progress on any UNFINISHED datamine, target is 0 (far left)
+            progress_on_unfinished = any(
+                datamine_completed[i] > 0 or self.datamine_completed_before[i] > 0
+                for i in range(len(self.datamines))
+                if not self.completed_datamines[i] and not self.failed_datamines[i]
+            )
 
-            # Determine max shift distance to set animation frames
+            if not progress_on_unfinished and not any(self.datamine_completed_before):
+                target_offsets = [0, 0, 0]
+            else:
+                # Calculate new offset, but handle failed datamines that need to reset
+                # For completed/failed datamines, use their final progress state
+                effective_progress = []
+                for i in range(len(self.datamines)):
+                    if self.completed_datamines[i]:
+                        effective_progress.append(len(self.datamines[i]))  # Full completion
+                    elif self.failed_datamines[i]:
+                        effective_progress.append(self.datamine_completed_before[i])  # Progress when it failed
+                    else:
+                        effective_progress.append(datamine_completed[i])  # Current progress
+                
+                # Calculate the alignment - all datamines should align to the one with maximum progress
+                max_progress = max(effective_progress) if any(effective_progress) else 0
+                target_offsets = [max_progress - ep for ep in effective_progress]
+                
+                # Special handling for datamines that have restarted (current progress < previous progress)
+                # This happens when a datamine fails and the user starts a new sequence
+                for i in range(len(target_offsets)):
+                    # If current progress is less than what we had before, this datamine restarted
+                    if (not self.completed_datamines[i] and not self.failed_datamines[i] and 
+                        datamine_completed[i] < self.datamine_completed_before[i]):
+                        # Allow this datamine to move left (reset) since it restarted
+                        pass  # Don't apply the max() constraint for restarted datamines
+                    else:
+                        # Normal case: ensure no datamine moves backward (left) - only maintain or move right
+                        target_offsets[i] = max(target_offsets[i], self.datamine_current_offsets[i])
+
+            # 2. Determine animation length
+            # The shift animation is for the datamine data codes
             max_shift = 0
             for i in range(len(self.datamines)):
-                shift = abs(end_offsets[i] - start_offsets[i])
-                if shift > max_shift:
-                    max_shift = shift
+                 shift = abs(target_offsets[i] - self.datamine_current_offsets[i])
+                 if shift > max_shift:
+                     max_shift = shift
+            
+            shift_animation_frames = max_shift * 4
 
-            animation_frames = max_shift * 4 # 4 steps per character block
+            # The swoop animation is for the "INSTALLED" / "FAILED" text
+            swoop_animation_frames = 25 # Fixed length for the text swoop-in
+            
+            animation_frames = max(shift_animation_frames, swoop_animation_frames)
 
             if animation_frames > 0:
                 for frame in range(animation_frames + 1):
-                    # Redraw static parts of the screen for clean animation
-                    # This is a simplified redraw, might need more elements if they are affected
+                    # --- Redraw static UI elements on each frame ---
                     stdscr.addstr(0, 41, "BUFFER", curses.color_pair(255))
-                    for i_buf in range(len(self.buffer)): stdscr.addstr(2, 41+i_buf*4, f"{self.buffer[i_buf]}", curses.color_pair(255))
-                    for i_buf in range(self.max_buffer_length - len(self.buffer)): stdscr.addstr(2, 61-i_buf*4, "░░", curses.color_pair(255))
-                    stdscr.addstr(4, 41,  "SEUENCE REQUIRED TO UPLOAD", curses.color_pair(255))
+                    for i_buf in range(len(self.buffer)):
+                        stdscr.addstr(2, 41 + i_buf * 4, f"{self.buffer[i_buf]}", curses.color_pair(255))
+                    for i_buf in range(self.max_buffer_length - len(self.buffer)):
+                        stdscr.addstr(2, 61 - i_buf * 4, "░░", curses.color_pair(255))
+                    stdscr.addstr(4, 41, "SEUENCE REQUIRED TO UPLOAD", curses.color_pair(255))
+                    
+                    # --- Draw all datamines on each frame ---
                     for i in range(len(self.datamines)):
                         y = 6 + i * 2
-                        stdscr.addstr(y, 41, " " * 42) # Clear previous datamine line
-                        stdscr.addstr(y, 73, f"DATAMINE_V{i+1}")
-                        arrow = "∇" * (i + 1)
-                        stdscr.addstr(y, 69, f"{arrow:>3}", curses.color_pair(255))
+                        stdscr.addstr(y, 41, " " * 55)  # Clear entire datamine line including decorative chars
+                        
+                        is_newly_completed = self.completed_datamines[i] and not self.dv_firsts[i]
+                        is_newly_failed = self.failed_datamines[i] and not self.dv_firsts[i]
 
+                        # --- Draw the datamine hex codes or the final banner ---
+                        if self.completed_datamines[i] or self.failed_datamines[i]:
+                            # This datamine is finished. Check if it's the one currently animating its swoop-in.
+                            if is_newly_completed or is_newly_failed:
+                                # Animate the "INSTALLED" or "FAILED" text swoop-in
+                                if is_newly_completed:
+                                    string_to_draw = f"  INSTALLED                 "
+                                    color = 235
+                                else:
+                                    string_to_draw = f"  FAILED                    "
+                                    color = 236
+                                
+                                swoop_progress = min(1.0, frame / swoop_animation_frames)
+                                visible_chars = int(len(string_to_draw) * swoop_progress)
+                                stdscr.addstr(y, 41, string_to_draw[:visible_chars], curses.color_pair(color))
+                                
+                                # Only draw decorative character when swoop-in is complete (or nearly complete)
+                                if swoop_progress >= 0.95:  # Draw decorative character at the very end
+                                    if is_newly_completed:
+                                        stdscr.addstr(y, 41 + 45, "▄", curses.color_pair(233))
+                                    else:
+                                        stdscr.addstr(y, 41 + 45, "▄", curses.color_pair(234))
+                            else:
+                                # For PREVIOUSLY completed/failed, draw the final static banner
+                                arrow = "∇" * (i + 1)
+                                text = arrow * (i + 1)
+                                string_INSTALLED = f"  INSTALLED                 {text:>3} DATAMINE_V{i+1}  "
+                                string_FAILED = f"  FAILED                    {text:>3} DATAMINE_V{i+1}  "
+                                final_string = string_INSTALLED if self.completed_datamines[i] else string_FAILED
+                                color = 235 if self.completed_datamines[i] else 236
+                                stdscr.addstr(y, 41, final_string, curses.color_pair(color))
+                                # Draw decorative character
+                                if self.completed_datamines[i]:
+                                    stdscr.addstr(y, 41 + 45, "▄", curses.color_pair(233))
+                                else:
+                                    stdscr.addstr(y, 41 + 45, "▄", curses.color_pair(234))
+                        else:
+                            # For unfinished datamines, animate their shift
+                            start_offset = self.datamine_current_offsets[i]
+                            target_offset = target_offsets[i]
+                            
+                            progress = min(1.0, frame / shift_animation_frames) if shift_animation_frames > 0 else 1.0
+                            current_offset = start_offset + (target_offset - start_offset) * progress
 
-                    for i in range(len(self.datamines)):
-                        y = 6 + i * 2
-                        # Interpolate offset for current frame
-                        current_offset_pix = start_offsets[i] * 4 + (end_offsets[i] - start_offsets[i]) * 4 * (frame / animation_frames)
-
-                        if not self.completed_datamines[i] and not self.failed_datamines[i]:
                             for j, char_data in enumerate(self.datamines[i]):
-                                x = 41 + round(j * 4 + current_offset_pix)
-
+                                x = 41 + round((j + current_offset) * 4)
                                 is_next_char = (j == datamine_completed[i])
                                 if is_next_char:
                                     stdscr.addstr(y, x, char_data, curses.color_pair(240))
@@ -359,10 +451,71 @@ class game():
                                     stdscr.addstr(y, x, char_data, curses.color_pair(255))
                                 else:
                                     stdscr.addstr(y, x, char_data)
+                            
+                            # Draw the label for active datamines during animation
+                            arrow = "∇" * (i + 1)
+                            stdscr.addstr(y, 73, f"DATAMINE_V{i+1}")
+                            stdscr.addstr(y, 69, f"{arrow:>3}", curses.color_pair(255))
+                        
+                        # --- No separate label handling needed anymore ---
 
-                    if self.time_left is not None: self.draw_time(stdscr, self.time_left, self.time_given)
+
+                    if self.time_left is not None:
+                        self.draw_time(stdscr, self.time_left, self.time_given)
                     stdscr.refresh()
                     time.sleep(0.008)
+            
+            # After animation, update the current offsets and dv_firsts flags
+            self.datamine_current_offsets = target_offsets
+            for i in range(len(self.datamines)):
+                if self.completed_datamines[i] or self.failed_datamines[i]:
+                    self.dv_firsts[i] = True
+            
+            # Calculate finished_by_completion and skip the final drawing section since we just drew everything in the animation
+            finished_by_completion = all(
+                failed or completed for failed, completed in zip(self.failed_datamines, self.completed_datamines))
+            
+            stdscr.refresh()
+            return click_executed, click_location, finished_by_completion
+
+        # Update datamine offsets even when there's no animation to ensure consistent positioning
+        # Calculate effective progress including completed/failed datamines for alignment
+        effective_progress = []
+        for i in range(len(self.datamines)):
+            if self.completed_datamines[i]:
+                effective_progress.append(len(self.datamines[i]))  # Full completion
+            elif self.failed_datamines[i]:
+                effective_progress.append(self.datamine_completed_before[i])  # Progress when it failed
+            else:
+                effective_progress.append(datamine_completed[i])  # Current progress
+        
+        # Calculate target offsets for alignment
+        if any(effective_progress):
+            max_progress = max(effective_progress)
+            
+            # Check if all UNFINISHED datamines have 0 progress - if so, reset all to left
+            progress_on_unfinished = any(
+                datamine_completed[i] > 0 or self.datamine_completed_before[i] > 0
+                for i in range(len(self.datamines))
+                if not self.completed_datamines[i] and not self.failed_datamines[i]
+            )
+            
+            if not progress_on_unfinished and not any(self.datamine_completed_before):
+                # All active datamines have 0 progress - reset everything to far left
+                self.datamine_current_offsets = [0, 0, 0]
+            else:
+                target_offsets = [max_progress - ep for ep in effective_progress]
+                # Special handling for datamines that have restarted (current progress < previous progress)
+                for i in range(len(target_offsets)):
+                    # If current progress is less than what we had before, this datamine restarted
+                    if (not self.completed_datamines[i] and not self.failed_datamines[i] and 
+                        datamine_completed[i] < self.datamine_completed_before[i]):
+                        # Allow this datamine to move left (reset) since it restarted
+                        pass  # Don't apply the max() constraint for restarted datamines
+                    else:
+                        # Normal case: ensure no datamine moves backward
+                        target_offsets[i] = max(target_offsets[i], self.datamine_current_offsets[i])
+                self.datamine_current_offsets = target_offsets
 
         # Final drawing of datamines after animation or for non-click updates
         
@@ -374,13 +527,14 @@ class game():
                 if i == 0:  # Line 1: 2 or 3 chars
                     num_chars[i] = random.choices([2, 3], weights=[80, 20], k=1)[0]
                 elif i == 1:  # Line 2: 3 or 4 chars
-                    num_chars[i] = random.choices([3, 4], weights=[80, 20], k=1)[0]
+                    #num_chars[i] = random.choices([3, 4], weights=[80, 20], k=1)[0]
+                    num_chars[i] = 3
                     line2_length = num_chars[i]  # Save the length of line 2
                 elif i == 2:  # Line 3: 3 or 4 chars, but not less than line 2
                     if line2_length >= 4:
                         num_chars[i] = 4  # Must be 4 if line 2 was 4
                     else:  # If line 2 was 3, line 3 can be 3 or 4
-                        num_chars[i] = random.choices([3, 4], weights=[70, 30], k=1)[0]
+                        num_chars[i] = random.choices([3, 4], weights=[80, 20], k=1)[0]
             else:
                 num_chars[i] = len(self.datamines[i])  # Use the stored characters from datamines
 
@@ -414,10 +568,12 @@ class game():
         for i in range(len(self.datamines)):
             #viasuals
             y = 6 + i * 2  # Calculate the y position for each row
+            
+            # Only draw the hex codes for unfinished datamines (completed/failed will be drawn as banners below)
             if not self.completed_datamines[i] and not self.failed_datamines[i]:
-                max_completed = max(datamine_completed) if any(datamine_completed) else 0
                 for j in range(num_chars[i]):#j = x; i = y <-- positions in gridspaces
-                    x = 41 + (j + (max_completed - datamine_completed[i])) * 4  # Calculate the x position for each character
+                    # Use the current offset from datamine_current_offsets for consistency
+                    x = 41 + (j + self.datamine_current_offsets[i]) * 4  # Calculate the x position for each character
                     
                     data = self.datamines[i][j]
 
@@ -462,29 +618,11 @@ class game():
             string_INSTALLED = f"  INSTALLED                 {text:>3} DATAMINE_V{i+1}  "
             string_FAILED = f"  FAILED                    {text:>3} DATAMINE_V{i+1}  "
             if self.completed_datamines[i]:
-                for j in range(len(string_INSTALLED)):
-                    stdscr.addstr(y_offset, j + 41, string_INSTALLED[j], curses.color_pair(235))
-                    if not self.dv_firsts[i]:
-                        if self.time_left and self.time_given and self.start_time:
-                            elapsed_time = time.time() - self.start_time
-                            time_left = max(0, self.time_given - elapsed_time)
-                            self.draw_time(stdscr, time_left, self.time_given)  # Update time display
-                        stdscr.refresh()
-                        time.sleep(0.005)  # Slow down the rendering for visual effect
-                stdscr.addstr(y, 41 + 45, "▄", curses.color_pair(233))
-                self.dv_firsts[i] = True  # Mark that the datamine animation has been executed
+                stdscr.addstr(y_offset, 41, string_INSTALLED, curses.color_pair(235))
+                stdscr.addstr(y_offset, 41 + 45, "▄", curses.color_pair(233))
             elif self.failed_datamines[i]:
-                for j in range(len(string_FAILED)):
-                    stdscr.addstr(y_offset, j + 41, string_FAILED[j], curses.color_pair(236))
-                    if not self.dv_firsts[i]:
-                        if self.time_left and self.time_given and self.start_time:
-                            elapsed_time = time.time() - self.start_time
-                            time_left = max(0, self.time_given - elapsed_time)
-                            self.draw_time(stdscr, time_left, self.time_given)  # Update time display
-                        stdscr.refresh()
-                        time.sleep(0.005)  # Slow down the rendering for visual effect
-                stdscr.addstr(y, 41 + 45, "▄", curses.color_pair(234))
-                self.dv_firsts[i] = True  # Mark that the datamine animation has been executed
+                stdscr.addstr(y_offset, 41, string_FAILED, curses.color_pair(236))
+                stdscr.addstr(y_offset, 41 + 45, "▄", curses.color_pair(234))
             else:
                 stdscr.addstr(y_offset, 73, f"DATAMINE_V{i+1}")
                 stdscr.addstr(y_offset, 69, f"{text:>3}", curses.color_pair(255))
