@@ -4,7 +4,7 @@ import time
 
 class game():
     def __init__(self):
-        self.CHARACTERS = ("55", "BD", "1C", "E9", "FF")
+        self.CHARACTERS = ("55", "BD", "1C", "E9", "FF", "7A")
         
         self.active_axis = 1 # 1 = horizontal, 0 = vertical
         self.last_selected = [0, 0] #x, y in matrix
@@ -100,6 +100,42 @@ class game():
         curses.init_pair(234, default_bg_id, 271)
         curses.init_pair(233, default_bg_id, 270)
 
+    def build_code_matrix(self, datamines):
+        """
+        Generate a 5x5 Breach-Protocol grid that contains every hex value
+        appearing in the supplied Datamine sequences, plus random filler
+        hex pairs to reach 25 total cells.
+
+        Args:
+            datamines (list[list[str]]): e.g. [['55', '1C', 'BD'],
+                                            ['1C', 'E9', 'FF', '55'],
+                                            ['BD', '1C']]
+
+        Returns:
+            list[list[str]]: 5x5 grid stored in variable `code_matrix`
+        """
+
+        # 1) Collect mandatory hexes (keep duplicates — they add decoys)
+        mandatory = [hex_code for seq in datamines for hex_code in seq]
+
+        # 2) Generate filler hex pairs until we have 25 total
+        def random_hex_pair():
+            return f"{self.CHARACTERS[random.randint(0, 4)]}"
+
+        while len(mandatory) < 25:
+            mandatory.append(random_hex_pair())
+
+        # 3) Shuffle for basic randomness
+        random.shuffle(mandatory)
+
+        # 4) Fill the 5×5 grid row‑major
+        code_matrix = [
+            mandatory[i*5:(i+1)*5]           # rows 0‑4
+            for i in range(5)
+        ]
+
+        return code_matrix
+
     def update_gui(self, stdscr, active_axis: int, last_selected: list[int], hovering: list[int], clicked=False, first=False):
         stdscr.clear()
         self.draw_time(stdscr, 0, 30)  # Placeholder for time drawing, will be updated later
@@ -112,6 +148,52 @@ class game():
         stdscr.addstr(4, 1,  "▄", curses.color_pair(255))
         stdscr.addstr(4, 2,   " CODE MATRIX                         ", curses.color_pair(254))
 
+        #generate lengths of datamines so the code_matrix can be generated
+        line2_length = 0
+        num_chars = [0, 0, 0]
+        for i in range(len(self.datamines)):
+            if first:
+                if i == 0:  # Line 1: 2 or 3 chars
+                    num_chars[i] = random.choices([2, 3], weights=[80, 20], k=1)[0]
+                elif i == 1:  # Line 2: 3 or 4 chars
+                    #num_chars[i] = random.choices([3, 4], weights=[80, 20], k=1)[0]
+                    num_chars[i] = 3
+                    line2_length = num_chars[i]  # Save the length of line 2
+                elif i == 2:  # Line 3: 3 or 4 chars, but not less than line 2
+                    if line2_length >= 4:
+                        num_chars[i] = 4  # Must be 4 if line 2 was 4
+                    else:  # If line 2 was 3, line 3 can be 3 or 4
+                        num_chars[i] = random.choices([3, 4], weights=[80, 20], k=1)[0]
+            else:
+                num_chars[i] = len(self.datamines[i])  # Use the stored characters from datamines
+
+        # Hex generation algorithm
+        if first:
+            # Hex generation algorithm needs tweaking
+            # last Hex of first has to be first Hex of 2 or 3
+            # last Hex of second has to be first 1 or 3 depending on previous choise
+            # last Hex of third has to be first 1 or 2 depending on previous choise
+            # 2 Options:
+            # 1 goes to 2 to 3 to 1
+            # 1 goes to 3 to 2 to 1
+            
+            for i in range(len(self.datamines)):
+                self.datamines[i] = []  # Reset the datamine list for fresh generation
+                for j in range(num_chars[i]):
+                    self.datamines[i].append(self.CHARACTERS[random.randint(0, 4)])  # Append random characters
+            
+            next_datamine = random.randint(1, 2)  # Randomly choose next datamine (1 or 2)
+            
+            if next_datamine == 1:
+                self.datamines[1][0] = self.datamines[0][-1]
+                self.datamines[2][0] = self.datamines[1][-1]
+                self.datamines[2][-1] = self.datamines[0][0]
+            elif next_datamine == 2:
+                self.datamines[2][0] = self.datamines[0][-1]
+                self.datamines[1][0] = self.datamines[2][-1]
+                self.datamines[1][-1] = self.datamines[0][0]
+        
+        
         #logic first
         gray = []
         gray_selected = []
@@ -219,17 +301,18 @@ class game():
                             break
                 if datamine_hover_char:
                     break
+        
+        # Generate the code matrix once, outside the drawing loops
+        if first:
+            self.code_matrix = self.build_code_matrix(self.datamines)  # Generate the code matrix based on datamines
                 
         for i in range(len(self.code_matrix)):
             y = 6 + i * 2  # Calculate the y position for each row
             for j in range(len(self.code_matrix[i])):
                 # Calculate the position for each character
                 x = 9 + j * 5
-                if first:
-                    data = self.CHARACTERS[random.randint(0, 4)]
-                    self.code_matrix[i][j] = data
-                else:
-                    data = self.code_matrix[i][j]
+                
+                data = self.code_matrix[i][j]
 
                 # --- New Drawing Logic ---
                 is_gray_selected = [j, i] == gray_selected
@@ -517,53 +600,8 @@ class game():
                         target_offsets[i] = max(target_offsets[i], self.datamine_current_offsets[i])
                 self.datamine_current_offsets = target_offsets
 
-        # Final drawing of datamines after animation or for non-click updates
-        
-        #generate lengths of datamines
-        line2_length = 0
-        num_chars = [0, 0, 0]
-        for i in range(len(self.datamines)):
-            if first:
-                if i == 0:  # Line 1: 2 or 3 chars
-                    num_chars[i] = random.choices([2, 3], weights=[80, 20], k=1)[0]
-                elif i == 1:  # Line 2: 3 or 4 chars
-                    #num_chars[i] = random.choices([3, 4], weights=[80, 20], k=1)[0]
-                    num_chars[i] = 3
-                    line2_length = num_chars[i]  # Save the length of line 2
-                elif i == 2:  # Line 3: 3 or 4 chars, but not less than line 2
-                    if line2_length >= 4:
-                        num_chars[i] = 4  # Must be 4 if line 2 was 4
-                    else:  # If line 2 was 3, line 3 can be 3 or 4
-                        num_chars[i] = random.choices([3, 4], weights=[80, 20], k=1)[0]
-            else:
-                num_chars[i] = len(self.datamines[i])  # Use the stored characters from datamines
 
-        # Hex generation algorithm
-        if first:
-            # Hex generation algorithm needs tweaking
-            # last Hex of first has to be first Hex of 2 or 3
-            # last Hex of second has to be first 1 or 3 depending on previous choise
-            # last Hex of third has to be first 1 or 2 depending on previous choise
-            # 2 Options:
-            # 1 goes to 2 to 3 to 1
-            # 1 goes to 3 to 2 to 1
-            
-            for i in range(len(self.datamines)):
-                self.datamines[i] = []  # Reset the datamine list for fresh generation
-                for j in range(num_chars[i]):
-                    self.datamines[i].append(self.CHARACTERS[random.randint(0, 4)])  # Append random characters
-            
-            next_datamine = random.randint(1, 2)  # Randomly choose next datamine (1 or 2)
-            
-            if next_datamine == 1:
-                self.datamines[1][0] = self.datamines[0][-1]
-                self.datamines[2][0] = self.datamines[1][-1]
-                self.datamines[2][-1] = self.datamines[0][0]
-            elif next_datamine == 2:
-                self.datamines[2][0] = self.datamines[0][-1]
-                self.datamines[1][0] = self.datamines[2][-1]
-                self.datamines[1][-1] = self.datamines[0][0]
-            
+        # Final drawing of datamines after animation or for non-click updates            
                     
         for i in range(len(self.datamines)):
             #viasuals
