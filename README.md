@@ -25,8 +25,8 @@ git clone https://github.com/yourusername/Cyberpunk-Netrunner-Mini-Game.git
 cd Cyberpunk-Netrunner-Mini-Game
 ```
 
-2. Install Python 3.13.3 (Windows x64 version recommended)
-    **Note:**ARM-based systems HAVE to have paython x64 version selected since windows-curses is not supported for ARM versions of python
+2. Install Python 3.13.3 (Windows x64 version recommended)  
+    **Note:** ARM-based systems HAVE to have paython x64 version selected since windows-curses is not supported for ARM versions of python
 
 3. Install windows-curses:
 ```console
