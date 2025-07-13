@@ -769,7 +769,7 @@ class game():
                 # Refresh if the mouse enters or leaves a grid area.
                 if self.is_over_grid(self.hovering) or self.is_over_grid(self.old_hovering):
                     _, _, self.finished_by_completion = self.update_gui(stdscr, self.active_axis, self.last_selected, self.hovering)
-                    stdscr.addstr(16, 0, f"Hovering over: {self.hovering}      ", curses.color_pair(255))
+                    #stdscr.addstr(16, 0, f"Hovering over: {self.hovering}      ", curses.color_pair(255))
 
             self.old_hovering = self.hovering
 
