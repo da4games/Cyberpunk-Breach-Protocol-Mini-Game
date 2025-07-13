@@ -6,13 +6,13 @@ class game():
     def __init__(self):
         self.CHARACTERS = ("55", "BD", "1C", "E9", "FF", "7A")
         
-        self.active_axis = 1 # 1 = horizontal, 0 = vertical
-        self.last_selected = [0, 0] #x, y in matrix
+        self.active_axis = 1  # 1 = horizontal, 0 = vertical
+        self.last_selected = [0, 0]  # x, y coordinates in matrix
         self.hovering = [0, 0]
         self.old_hovering = [0, 0]
         
         self.start_time = None
-        self.time_given = 30 #seconds
+        self.time_given = 30
         self.time_left = self.time_given
         self.finished_by_completion = False
         
@@ -30,73 +30,62 @@ class game():
             []]
 
         self.buffer = []
-        self.max_buffer_length = 6  # Maximum length of the buffer
+        self.max_buffer_length = 6
 
-        self.dv_firsts = [False, False, False]  # Track if the datamines animation has been executed for each datamine
-
+        self.dv_firsts = [False, False, False]  # Track datamine animation state
         self.datamine_completed_before = [0, 0, 0]
         self.completed_datamines = [False, False, False]
         self.failed_datamines = [False, False, False]
-        self.datamine_current_offsets = [0, 0, 0]  # Store current on-screen offsets
+        self.datamine_current_offsets = [0, 0, 0]  # On-screen position offsets
 
     def color_init(self, stdscr):
-        # Initialize colors
         curses.start_color()
         curses.use_default_colors()
 
-        # Define color pairs
-        # Format: init_pair(pair_number, foreground, background)
-
-        default_bg_id = 21  # Custom ID for the "transparent" background
-        default_fg_id = 22  # Custom ID for the foreground
-        very_exact_color_of_bg = 94#.117647058823529411764705882353
-        very_exact_color_of_fg = 898#.03921568627450980392156862745
+        default_bg_id = 21
+        default_fg_id = 22
+        very_exact_color_of_bg = 94
+        very_exact_color_of_fg = 898
         curses.init_color(default_bg_id, very_exact_color_of_bg, very_exact_color_of_bg, very_exact_color_of_bg)
         curses.init_color(default_fg_id, very_exact_color_of_fg, very_exact_color_of_fg, very_exact_color_of_fg)
-        curses.init_pair(default_bg_id, curses.COLOR_WHITE, default_bg_id)  # Transparent background
+        curses.init_pair(default_bg_id, curses.COLOR_WHITE, default_bg_id)
 
-        #max_r = 935
-        #max_g = 543
-        #max_b = 1000
-
-        # custom green from cyberpunk breach protocol, rgb(208, 236, 88)
-        # converted to curses values (0-1000)
+        # Cyberpunk green: rgb(208, 236, 88) converted to curses values (0-1000)
         curses.init_color(277, 816, 925, 345) 
-        #curses.init_color(277, 549, 627, 235)
-        curses.init_pair(255, 277, default_bg_id)  # Custom color for foreground text
-        curses.init_pair(254, curses.COLOR_BLACK, 277) # Custom color for background text
-        curses.init_pair(253, default_bg_id, 277) # custom color for background text with default background
+        curses.init_pair(255, 277, default_bg_id)
+        curses.init_pair(254, curses.COLOR_BLACK, 277)
+        curses.init_pair(253, default_bg_id, 277)
 
-        curses.init_color(276, 161, 176, 224) # custom gray for bg
-        curses.init_pair(252, 277, 276) # gray bg with custom green
-        curses.init_pair(251, default_bg_id, 276) # gray bg with default bg as fg
-        curses.init_pair(250, 276, default_bg_id) # gray fg with default bg
-        curses.init_pair(241, curses.COLOR_WHITE, 276) #white fg with gray bg
+        curses.init_color(276, 161, 176, 224)
+        curses.init_pair(252, 277, 276)
+        curses.init_pair(251, default_bg_id, 276)
+        curses.init_pair(250, 276, default_bg_id)
+        curses.init_pair(241, curses.COLOR_WHITE, 276)
 
-        curses.init_color(275, 545, 788, 788) # custom blue
-        curses.init_pair(249, 275, 276)  # Custom blue for foreground text
-        curses.init_pair(248, 275, default_bg_id)  # Custom blue for text with default background
+        curses.init_color(275, 545, 788, 788)
+        curses.init_pair(249, 275, 276)
+        curses.init_pair(248, 275, default_bg_id)
 
-        curses.init_color(274, 239, 255, 302) #custom lighter gray
-        curses.init_pair(247, 274, 276)  # Custom lighter gray for fg and gray bg
-        curses.init_pair(246, 274, default_bg_id)  # Custom lighter gray for fg and default bg
+        curses.init_color(274, 239, 255, 302)
+        curses.init_pair(247, 274, 276)
+        curses.init_pair(246, 274, default_bg_id)
 
-        curses.init_color(273, 122, 125, 102) # custom very dark low oppacity green
-        curses.init_pair(245, 277, 273)  # Custom very dark low oppacity green for text with default background
+        curses.init_color(273, 122, 125, 102)
+        curses.init_pair(245, 277, 273)
         curses.init_pair(244, 273, default_bg_id)
         curses.init_pair(243, default_bg_id, 273)
         curses.init_pair(242, 273, 274)
 
-        curses.init_color(272, 94, 94, 165) #custom medium gray
-        curses.init_pair(240, curses.COLOR_WHITE, 272)  #white fg with medium gray bg
-        curses.init_pair(239, 272, default_bg_id)  # medium gray fg with default bg
+        curses.init_color(272, 94, 94, 165)
+        curses.init_pair(240, curses.COLOR_WHITE, 272)
+        curses.init_pair(239, 272, default_bg_id)
         curses.init_pair(238, default_bg_id, 272)
-        curses.init_pair(237, 275, 272)  # Custom blue fg with medium gray bg
+        curses.init_pair(237, 275, 272)
 
-        curses.init_color(271, 992, 380, 318)# failed red
-        curses.init_color(270, 192, 827, 498)# installed green
-        curses.init_pair(236, curses.COLOR_BLACK, 271) # black text on failed red background
-        curses.init_pair(235, curses.COLOR_BLACK, 270) # black text on installed green background
+        curses.init_color(271, 992, 380, 318)  # Failed red
+        curses.init_color(270, 192, 827, 498)  # Success green
+        curses.init_pair(236, curses.COLOR_BLACK, 271)
+        curses.init_pair(235, curses.COLOR_BLACK, 270)
         curses.init_pair(234, default_bg_id, 271)
         curses.init_pair(233, default_bg_id, 270)
 
@@ -115,22 +104,20 @@ class game():
             list[list[str]]: 5x5 grid stored in variable `code_matrix`
         """
 
-        # 1) Collect mandatory hexes (keep duplicates — they add decoys)
+        # Collect mandatory hexes (keep duplicates for decoys)
         mandatory = [hex_code for seq in datamines for hex_code in seq]
 
-        # 2) Generate filler hex pairs until we have 25 total
+        # Generate filler hex pairs until we have 25 total
         def random_hex_pair():
             return f"{self.CHARACTERS[random.randint(0, 4)]}"
 
         while len(mandatory) < 25:
             mandatory.append(random_hex_pair())
 
-        # 3) Shuffle for basic randomness
+        # Shuffle and fill the 5×5 grid
         random.shuffle(mandatory)
-
-        # 4) Fill the 5×5 grid row‑major
         code_matrix = [
-            mandatory[i*5:(i+1)*5]           # rows 0‑4
+            mandatory[i*5:(i+1)*5]
             for i in range(5)
         ]
 
@@ -138,51 +125,45 @@ class game():
 
     def update_gui(self, stdscr, active_axis: int, last_selected: list[int], hovering: list[int], clicked=False, first=False):
         stdscr.clear()
-        self.draw_time(stdscr, 0, 30)  # Placeholder for time drawing, will be updated later
+        self.draw_time(stdscr, 0, 30)
         hovering_over = ""
         click_executed = False
         click_location = [0, 0]
 
-        #Main GUI
+        # Main GUI elements
         stdscr.addstr(1, 1,  "BREACH TIME REMAINING", curses.color_pair(255))
         stdscr.addstr(4, 1,  "▄", curses.color_pair(255))
         stdscr.addstr(4, 2,   " CODE MATRIX                         ", curses.color_pair(254))
 
-        #generate lengths of datamines so the code_matrix can be generated
+        # Generate datamine lengths for code matrix generation
         line2_length = 0
         num_chars = [0, 0, 0]
         for i in range(len(self.datamines)):
             if first:
-                if i == 0:  # Line 1: 2 or 3 chars
+                if i == 0:
                     num_chars[i] = random.choices([2, 3], weights=[80, 20], k=1)[0]
-                elif i == 1:  # Line 2: 3 or 4 chars
-                    #num_chars[i] = random.choices([3, 4], weights=[80, 20], k=1)[0]
+                elif i == 1:
                     num_chars[i] = 3
-                    line2_length = num_chars[i]  # Save the length of line 2
-                elif i == 2:  # Line 3: 3 or 4 chars, but not less than line 2
+                    line2_length = num_chars[i]
+                elif i == 2:
                     if line2_length >= 4:
-                        num_chars[i] = 4  # Must be 4 if line 2 was 4
-                    else:  # If line 2 was 3, line 3 can be 3 or 4
+                        num_chars[i] = 4
+                    else:
                         num_chars[i] = random.choices([3, 4], weights=[80, 20], k=1)[0]
             else:
-                num_chars[i] = len(self.datamines[i])  # Use the stored characters from datamines
+                num_chars[i] = len(self.datamines[i])
 
-        # Hex generation algorithm
+        # Generate hex sequences with chain connections on first run
         if first:
-            # Hex generation algorithm needs tweaking
-            # last Hex of first has to be first Hex of 2 or 3
-            # last Hex of second has to be first 1 or 3 depending on previous choise
-            # last Hex of third has to be first 1 or 2 depending on previous choise
-            # 2 Options:
-            # 1 goes to 2 to 3 to 1
-            # 1 goes to 3 to 2 to 1
+            # Create datamine sequences that chain together:
+            # Option 1: 1→2→3→1 or Option 2: 1→3→2→1
             
             for i in range(len(self.datamines)):
-                self.datamines[i] = []  # Reset the datamine list for fresh generation
+                self.datamines[i] = []
                 for j in range(num_chars[i]):
-                    self.datamines[i].append(self.CHARACTERS[random.randint(0, 4)])  # Append random characters
+                    self.datamines[i].append(self.CHARACTERS[random.randint(0, 4)])
             
-            next_datamine = random.randint(1, 2)  # Randomly choose next datamine (1 or 2)
+            next_datamine = random.randint(1, 2)
             
             if next_datamine == 1:
                 self.datamines[1][0] = self.datamines[0][-1]
@@ -193,30 +174,28 @@ class game():
                 self.datamines[1][0] = self.datamines[2][-1]
                 self.datamines[1][-1] = self.datamines[0][0]
         
-        
-        #logic first
+        # Initialize highlighting arrays
         gray = []
         gray_selected = []
         gray_gray = []
         green_bg = []
         datamine_hover_char = ""
 
-        #fills in gray (the selectable axis)
-        if active_axis == 0: # vertical
+        # Populate selectable axis cells
+        if active_axis == 0:  # vertical
             x_coord = last_selected[0]
             for i in range(len(self.code_matrix)):
                 gray.append([x_coord, i])
 
-        if active_axis == 1: # horizontal
+        if active_axis == 1:  # horizontal
             y_coord = last_selected[1]
             for j in range(len(self.code_matrix[y_coord])):
                 gray.append([j, y_coord])
 
-        #fills in gray_selected
+        # Handle mouse hover selection
         hover_matrix_x = -1
         hover_matrix_y = -1
         if hovering[0] >= 9 and hovering[0] <= 30 and hovering[1] >= 6 and hovering[1] <= 14:
-            # Convert screen coordinates to matrix indices
             x_found = False
             y_found = False
 
@@ -228,7 +207,6 @@ class game():
                 hover_matrix_x = (hovering[0] - 9) // 5
 
             if x_found and y_found and [hover_matrix_x, hover_matrix_y] in gray:
-                # Prevent selecting already used cells
                 if self.code_matrix[hover_matrix_y][hover_matrix_x] != "[]":
                     hovering_over = self.code_matrix[hover_matrix_y][hover_matrix_x]
                     gray_selected = [hover_matrix_x, hover_matrix_y]
@@ -236,8 +214,7 @@ class game():
         if clicked:
             if hovering_over in self.CHARACTERS:
                 if len(self.buffer) < self.max_buffer_length:
-                    # No need to pop from gray, just mark as used
-                    self.datamine_completed_before = self.get_datamine_completion(self.buffer, self.datamines) # Store state before buffer change
+                    self.datamine_completed_before = self.get_datamine_completion(self.buffer, self.datamines)
                     gray_gray.append(gray_selected)
                     self.buffer.append(hovering_over)
                     click_location = gray_selected.copy()
@@ -245,54 +222,50 @@ class game():
                     gray_selected = []
                     click_executed = True
 
-        #fills in gray_gray
+        # Mark used cells
         for i in range(len(self.code_matrix)):
             for j in range(len(self.code_matrix[i])):
                 if self.code_matrix[i][j] == "[]":
                     gray_gray.append([j, i])
 
-        #fills in green_bg (potential next axis)
+        # Populate potential next axis cells
         if gray_selected:
-            if active_axis == 0: # current is vertical, so potential next is horizontal
+            if active_axis == 0:  # current vertical, next horizontal
                 y_coord = gray_selected[1]
                 for j in range(len(self.code_matrix[y_coord])):
                     green_bg.append([j, y_coord])
 
-            if active_axis == 1: # current is horizontal, so potential next is vertical
+            if active_axis == 1:  # current horizontal, next vertical
                 x_coord = gray_selected[0]
                 for i in range(len(self.code_matrix)):
                     green_bg.append([x_coord, i])
 
-        #datamine completion refresh
         datamine_completed = self.get_datamine_completion(self.buffer, self.datamines)
 
-        # Check for sequence completion for each datamine
+        # Check datamine completion and failure states
         for i, datamine in enumerate(self.datamines):
             if datamine_completed[i] == len(datamine) and not self.failed_datamines[i] and not self.buffer == []:
                 self.completed_datamines[i] = True
 
-            # failed if the buffer is not long enough to complete the datamine
-            # This means the buffer is too short to match the remaining characters in the datamine
+            # Mark as failed if buffer space is insufficient to complete
             if self.max_buffer_length - len(self.buffer) < len(datamine) - datamine_completed[i] and not self.completed_datamines[i] and not self.buffer == []:
                 self.failed_datamines[i] = True
 
-        # Check for hover over datamines to highlight matrix
+        # Handle datamine hover highlighting
         if not first:
-            # Use the same effective progress calculation as the positioning logic
             effective_progress = []
             for idx in range(len(self.datamines)):
                 if self.completed_datamines[idx]:
-                    effective_progress.append(len(self.datamines[idx]))  # Full completion
+                    effective_progress.append(len(self.datamines[idx]))
                 elif self.failed_datamines[idx]:
-                    effective_progress.append(self.datamine_completed_before[idx])  # Progress when it failed
+                    effective_progress.append(self.datamine_completed_before[idx])
                 else:
-                    effective_progress.append(datamine_completed[idx])  # Current progress
+                    effective_progress.append(datamine_completed[idx])
             
             max_completed = max(effective_progress) if any(effective_progress) else 0
             for i_data, datamine in enumerate(self.datamines):
                 y_datamine = 6 + i_data * 2
                 if hovering[1] == y_datamine:
-                    # Use current offset from datamine_current_offsets for consistency
                     x_offset = self.datamine_current_offsets[i_data]
                     for j_data, char_data in enumerate(datamine):
                         x_datamine = 41 + (j_data + x_offset) * 4
@@ -302,73 +275,71 @@ class game():
                 if datamine_hover_char:
                     break
         
-        # Generate the code matrix once, outside the drawing loops
+        # Generate code matrix on first run
         if first:
-            self.code_matrix = self.build_code_matrix(self.datamines)  # Generate the code matrix based on datamines
+            self.code_matrix = self.build_code_matrix(self.datamines)
                 
         for i in range(len(self.code_matrix)):
-            y = 6 + i * 2  # Calculate the y position for each row
+            y = 6 + i * 2
             for j in range(len(self.code_matrix[i])):
-                # Calculate the position for each character
                 x = 9 + j * 5
                 
                 data = self.code_matrix[i][j]
 
-                # --- New Drawing Logic ---
+                # Determine cell state for styling
                 is_gray_selected = [j, i] == gray_selected
                 is_gray = [j, i] in gray
                 is_green_bg = [j, i] in green_bg
                 is_gray_gray = [j, i] in gray_gray
 
-                # Determine character color
+                # Apply character styling based on state
                 if is_gray_selected:
-                    stdscr.addstr(y, x, data, curses.color_pair(249))  # blue if hovering over
+                    stdscr.addstr(y, x, data, curses.color_pair(249))
                 elif datamine_hover_char and data == datamine_hover_char and is_gray and not is_gray_gray:
-                    stdscr.addstr(y, x, data, curses.color_pair(249))  # blue if hovering over datamine match
+                    stdscr.addstr(y, x, data, curses.color_pair(249))
                 elif is_gray_gray and is_gray:
-                    stdscr.addstr(y, x, data, curses.color_pair(247))  # used cell on active axis
+                    stdscr.addstr(y, x, data, curses.color_pair(247))
                 elif is_gray_gray and is_green_bg:
-                    stdscr.addstr(y, x, data, curses.color_pair(243))  # used cell on inactive axis: dark green bg, gray_gray as fg
-                elif is_gray and is_green_bg: # Intersection of active and potential axes
-                    stdscr.addstr(y, x, data, curses.color_pair(252)) # Draw as active axis
+                    stdscr.addstr(y, x, data, curses.color_pair(243))
+                elif is_gray and is_green_bg:
+                    stdscr.addstr(y, x, data, curses.color_pair(252))
                 elif is_gray:
-                    stdscr.addstr(y, x, data, curses.color_pair(252))  # active axis
+                    stdscr.addstr(y, x, data, curses.color_pair(252))
                 elif is_green_bg:
-                    stdscr.addstr(y, x, data, curses.color_pair(245))  # inactive axis
+                    stdscr.addstr(y, x, data, curses.color_pair(245))
                 elif is_gray_gray:
-                    stdscr.addstr(y, x, data, curses.color_pair(246))  # used cell, not on any axis
+                    stdscr.addstr(y, x, data, curses.color_pair(246))
                 else:
-                    stdscr.addstr(y, x, data, curses.color_pair(255))  # normal
+                    stdscr.addstr(y, x, data, curses.color_pair(255))
 
-                # Determine padding color and orientation based on priority
+                # Cell padding for visual highlighting
                 padding_color = -1
-                padding_axis = -1 # 0 for vertical, 1 for horizontal
+                padding_axis = -1
 
-                # Handle intersection first
+                # Handle axis intersection styling
                 if is_gray and is_green_bg:
-                    # Draw green padding behind the gray padding
                     green_padding_axis = 1 if active_axis == 0 else 0
-                    if green_padding_axis == 1: # Horizontal Green Padding
+                    if green_padding_axis == 1:
                         if j < 4: stdscr.addstr(y, x + 2, "   ", curses.color_pair(245))
                         else: stdscr.addstr(y, x + 2, "  ", curses.color_pair(245))
                         if j == 0: stdscr.addstr(y, x - 2, "  ", curses.color_pair(245))
-                    if green_padding_axis == 0: # Vertical Green Padding
+                    if green_padding_axis == 0:
                         if i < 4: stdscr.addstr(y + 1, x - 1, "    ", curses.color_pair(245))
                         else: stdscr.addstr(y + 1, x-1, "▄▄▄▄", curses.color_pair(243))
                         if i == 0: stdscr.addstr(y - 1, x-1, "▄▄▄▄", curses.color_pair(244))
 
-                    padding_color = 252 # Then set up for gray padding
+                    padding_color = 252
                     padding_axis = active_axis
 
                 elif is_gray:
-                    padding_color = 252  # Active axis gray
+                    padding_color = 252
                     padding_axis = active_axis
                 elif is_green_bg:
-                    padding_color = 245  # Inactive axis green
-                    padding_axis = 1 if active_axis == 0 else 0 # Flipped axis
+                    padding_color = 245
+                    padding_axis = 1 if active_axis == 0 else 0
 
                 if padding_color != -1:
-                    if padding_axis == 1:  # Horizontal Padding
+                    if padding_axis == 1:
                         stdscr.addstr(y, x - 1, " ", curses.color_pair(padding_color))
                         if j < 4:
                             stdscr.addstr(y, x + 2, "   ", curses.color_pair(padding_color))
@@ -377,17 +348,17 @@ class game():
                         if j == 0:
                             stdscr.addstr(y, x - 2, "  ", curses.color_pair(padding_color))
 
-                    if padding_axis == 0:  # Vertical Padding
+                    if padding_axis == 0:
                         stdscr.addstr(y, x - 1, " ", curses.color_pair(padding_color))
                         stdscr.addstr(y, x + 2, " ", curses.color_pair(padding_color))
                         if i < 4:
                             stdscr.addstr(y + 1, x - 1, "    ", curses.color_pair(padding_color))
-                        else: # last character in col
+                        else:
                             stdscr.addstr(y + 1, x-1, "▄▄▄▄", curses.color_pair(251 if is_gray else 243))
-                        if i == 0: # first character in col
+                        if i == 0:
                             stdscr.addstr(y - 1, x-1, "▄▄▄▄", curses.color_pair(250 if is_gray else 244))
 
-        #right GUI
+        # Buffer display
         stdscr.addstr(0, 41, "BUFFER", curses.color_pair(255))
 
         for i in range(len(self.buffer)):
@@ -395,23 +366,18 @@ class game():
 
         for i in range(self.max_buffer_length - len(self.buffer)):
             if i == 5 - len(self.buffer) and hovering_over != "":
-                stdscr.addstr(2, 61-i*4, hovering_over, curses.color_pair(248)) #blue if hovering over
+                stdscr.addstr(2, 61-i*4, hovering_over, curses.color_pair(248))
             else:
                 stdscr.addstr(2, 61-i*4, "░░", curses.color_pair(255))
 
-        #stdscr.addstr(1, 41,  "░░  ░░  ░░  ░░  ░░  ░░", curses.color_pair(255))
         stdscr.addstr(4, 41,  "SEUENCE REQUIRED TO UPLOAD", curses.color_pair(255))
 
-        #modular datamines
-        # --- Animation logic for datamine movement ---
+        # Datamine animation and display logic
         if clicked and click_executed:
-            # This is the primary animation loop that handles both shifting and the "swoop-in" text.
-            # It ensures all datamines are drawn on every frame to prevent disappearing.
 
             max_completed_after = max(datamine_completed) if any(datamine_completed) else 0
             
-            # 1. Calculate target offsets for all datamines
-            # If no progress on any UNFINISHED datamine, target is 0 (far left)
+            # Calculate target offsets for datamine alignment
             progress_on_unfinished = any(
                 datamine_completed[i] > 0 or self.datamine_completed_before[i] > 0
                 for i in range(len(self.datamines))
@@ -421,35 +387,27 @@ class game():
             if not progress_on_unfinished and not any(self.datamine_completed_before):
                 target_offsets = [0, 0, 0]
             else:
-                # Calculate new offset, but handle failed datamines that need to reset
-                # For completed/failed datamines, use their final progress state
                 effective_progress = []
                 for i in range(len(self.datamines)):
                     if self.completed_datamines[i]:
-                        effective_progress.append(len(self.datamines[i]))  # Full completion
+                        effective_progress.append(len(self.datamines[i]))
                     elif self.failed_datamines[i]:
-                        effective_progress.append(self.datamine_completed_before[i])  # Progress when it failed
+                        effective_progress.append(self.datamine_completed_before[i])
                     else:
-                        effective_progress.append(datamine_completed[i])  # Current progress
+                        effective_progress.append(datamine_completed[i])
                 
-                # Calculate the alignment - all datamines should align to the one with maximum progress
                 max_progress = max(effective_progress) if any(effective_progress) else 0
                 target_offsets = [max_progress - ep for ep in effective_progress]
                 
-                # Special handling for datamines that have restarted (current progress < previous progress)
-                # This happens when a datamine fails and the user starts a new sequence
+                # Handle datamine restarts (when progress decreases)
                 for i in range(len(target_offsets)):
-                    # If current progress is less than what we had before, this datamine restarted
                     if (not self.completed_datamines[i] and not self.failed_datamines[i] and 
                         datamine_completed[i] < self.datamine_completed_before[i]):
-                        # Allow this datamine to move left (reset) since it restarted
-                        pass  # Don't apply the max() constraint for restarted datamines
+                        pass  # Allow reset for restarted datamines
                     else:
-                        # Normal case: ensure no datamine moves backward (left) - only maintain or move right
                         target_offsets[i] = max(target_offsets[i], self.datamine_current_offsets[i])
 
-            # 2. Determine animation length
-            # The shift animation is for the datamine data codes
+            # Calculate animation frame counts
             max_shift = 0
             for i in range(len(self.datamines)):
                  shift = abs(target_offsets[i] - self.datamine_current_offsets[i])
@@ -457,15 +415,12 @@ class game():
                      max_shift = shift
             
             shift_animation_frames = max_shift * 4
-
-            # The swoop animation is for the "INSTALLED" / "FAILED" text
-            swoop_animation_frames = 25 # Fixed length for the text swoop-in
-            
+            swoop_animation_frames = 25
             animation_frames = max(shift_animation_frames, swoop_animation_frames)
 
             if animation_frames > 0:
                 for frame in range(animation_frames + 1):
-                    # --- Redraw static UI elements on each frame ---
+                    # Redraw static UI elements
                     stdscr.addstr(0, 41, "BUFFER", curses.color_pair(255))
                     for i_buf in range(len(self.buffer)):
                         stdscr.addstr(2, 41 + i_buf * 4, f"{self.buffer[i_buf]}", curses.color_pair(255))
@@ -473,19 +428,17 @@ class game():
                         stdscr.addstr(2, 61 - i_buf * 4, "░░", curses.color_pair(255))
                     stdscr.addstr(4, 41, "SEUENCE REQUIRED TO UPLOAD", curses.color_pair(255))
                     
-                    # --- Draw all datamines on each frame ---
+                    # Animate datamines
                     for i in range(len(self.datamines)):
                         y = 6 + i * 2
-                        stdscr.addstr(y, 41, " " * 55)  # Clear entire datamine line including decorative chars
+                        stdscr.addstr(y, 41, " " * 55)
                         
                         is_newly_completed = self.completed_datamines[i] and not self.dv_firsts[i]
                         is_newly_failed = self.failed_datamines[i] and not self.dv_firsts[i]
 
-                        # --- Draw the datamine hex codes or the final banner ---
+                        # Display completed/failed datamines with animation
                         if self.completed_datamines[i] or self.failed_datamines[i]:
-                            # This datamine is finished. Check if it's the one currently animating its swoop-in.
                             if is_newly_completed or is_newly_failed:
-                                # Animate the "INSTALLED" or "FAILED" text swoop-in
                                 if is_newly_completed:
                                     string_to_draw = f"  INSTALLED                 "
                                     color = 235
@@ -497,14 +450,12 @@ class game():
                                 visible_chars = int(len(string_to_draw) * swoop_progress)
                                 stdscr.addstr(y, 41, string_to_draw[:visible_chars], curses.color_pair(color))
                                 
-                                # Only draw decorative character when swoop-in is complete (or nearly complete)
-                                if swoop_progress >= 0.95:  # Draw decorative character at the very end
+                                if swoop_progress >= 0.95:
                                     if is_newly_completed:
                                         stdscr.addstr(y, 41 + 45, "▄", curses.color_pair(233))
                                     else:
                                         stdscr.addstr(y, 41 + 45, "▄", curses.color_pair(234))
                             else:
-                                # For PREVIOUSLY completed/failed, draw the final static banner
                                 arrow = "∇" * (i + 1)
                                 text = arrow * (i + 1)
                                 string_INSTALLED = f"  INSTALLED                 {text:>3} DATAMINE_V{i+1}  "
@@ -512,13 +463,12 @@ class game():
                                 final_string = string_INSTALLED if self.completed_datamines[i] else string_FAILED
                                 color = 235 if self.completed_datamines[i] else 236
                                 stdscr.addstr(y, 41, final_string, curses.color_pair(color))
-                                # Draw decorative character
                                 if self.completed_datamines[i]:
                                     stdscr.addstr(y, 41 + 45, "▄", curses.color_pair(233))
                                 else:
                                     stdscr.addstr(y, 41 + 45, "▄", curses.color_pair(234))
                         else:
-                            # For unfinished datamines, animate their shift
+                            # Animate unfinished datamines
                             start_offset = self.datamine_current_offsets[i]
                             target_offset = target_offsets[i]
                             
@@ -535,48 +485,40 @@ class game():
                                 else:
                                     stdscr.addstr(y, x, char_data)
                             
-                            # Draw the label for active datamines during animation
                             arrow = "∇" * (i + 1)
                             stdscr.addstr(y, 73, f"DATAMINE_V{i+1}")
                             stdscr.addstr(y, 69, f"{arrow:>3}", curses.color_pair(255))
-                        
-                        # --- No separate label handling needed anymore ---
-
 
                     if self.time_left is not None:
                         self.draw_time(stdscr, self.time_left, self.time_given)
                     stdscr.refresh()
                     time.sleep(0.008)
             
-            # After animation, update the current offsets and dv_firsts flags
+            # Update animation state after completion
             self.datamine_current_offsets = target_offsets
             for i in range(len(self.datamines)):
                 if self.completed_datamines[i] or self.failed_datamines[i]:
                     self.dv_firsts[i] = True
             
-            # Calculate finished_by_completion and skip the final drawing section since we just drew everything in the animation
             finished_by_completion = all(
                 failed or completed for failed, completed in zip(self.failed_datamines, self.completed_datamines))
             
             stdscr.refresh()
             return click_executed, click_location, finished_by_completion
 
-        # Update datamine offsets even when there's no animation to ensure consistent positioning
-        # Calculate effective progress including completed/failed datamines for alignment
+        # Update datamine offsets for consistent positioning
         effective_progress = []
         for i in range(len(self.datamines)):
             if self.completed_datamines[i]:
-                effective_progress.append(len(self.datamines[i]))  # Full completion
+                effective_progress.append(len(self.datamines[i]))
             elif self.failed_datamines[i]:
-                effective_progress.append(self.datamine_completed_before[i])  # Progress when it failed
+                effective_progress.append(self.datamine_completed_before[i])
             else:
-                effective_progress.append(datamine_completed[i])  # Current progress
+                effective_progress.append(datamine_completed[i])
         
-        # Calculate target offsets for alignment
         if any(effective_progress):
             max_progress = max(effective_progress)
             
-            # Check if all UNFINISHED datamines have 0 progress - if so, reset all to left
             progress_on_unfinished = any(
                 datamine_completed[i] > 0 or self.datamine_completed_before[i] > 0
                 for i in range(len(self.datamines))
@@ -584,34 +526,26 @@ class game():
             )
             
             if not progress_on_unfinished and not any(self.datamine_completed_before):
-                # All active datamines have 0 progress - reset everything to far left
                 self.datamine_current_offsets = [0, 0, 0]
             else:
                 target_offsets = [max_progress - ep for ep in effective_progress]
-                # Special handling for datamines that have restarted (current progress < previous progress)
                 for i in range(len(target_offsets)):
-                    # If current progress is less than what we had before, this datamine restarted
                     if (not self.completed_datamines[i] and not self.failed_datamines[i] and 
                         datamine_completed[i] < self.datamine_completed_before[i]):
-                        # Allow this datamine to move left (reset) since it restarted
-                        pass  # Don't apply the max() constraint for restarted datamines
+                        pass  # Allow reset for restarted datamines
                     else:
-                        # Normal case: ensure no datamine moves backward
                         target_offsets[i] = max(target_offsets[i], self.datamine_current_offsets[i])
                 self.datamine_current_offsets = target_offsets
 
 
-        # Final drawing of datamines after animation or for non-click updates            
-                    
+        # Final drawing of datamines (non-animation path)             
         for i in range(len(self.datamines)):
-            #viasuals
-            y = 6 + i * 2  # Calculate the y position for each row
+            y = 6 + i * 2
             
-            # Only draw the hex codes for unfinished datamines (completed/failed will be drawn as banners below)
+            # Only draw hex codes for unfinished datamines
             if not self.completed_datamines[i] and not self.failed_datamines[i]:
-                for j in range(num_chars[i]):#j = x; i = y <-- positions in gridspaces
-                    # Use the current offset from datamine_current_offsets for consistency
-                    x = 41 + (j + self.datamine_current_offsets[i]) * 4  # Calculate the x position for each character
+                for j in range(num_chars[i]):
+                    x = 41 + (j + self.datamine_current_offsets[i]) * 4
                     
                     data = self.datamines[i][j]
 
@@ -622,18 +556,17 @@ class game():
                     if is_next_char:
                         highlight = True
                         if data == hovering_over or is_datamine_hover:
-                            stdscr.addstr(y, x, data, curses.color_pair(237)) # blue fg with gray bg
+                            stdscr.addstr(y, x, data, curses.color_pair(237))
                         else:
-                            stdscr.addstr(y, x, data, curses.color_pair(240)) # white fg with gray bg
+                            stdscr.addstr(y, x, data, curses.color_pair(240))
                     elif is_datamine_hover:
-                        stdscr.addstr(y, x, data, curses.color_pair(248)) # blue fg with default bg
+                        stdscr.addstr(y, x, data, curses.color_pair(248))
                     elif j < datamine_completed[i]:
-                        stdscr.addstr(y, x, data, curses.color_pair(255)) # green
+                        stdscr.addstr(y, x, data, curses.color_pair(255))
                     else:
                         stdscr.addstr(y, x, data)
 
-                    #highlighting depending on i aka y
-                    #much simpler then the matrix highlighting because it is always the same
+                    # Character highlighting
                     if highlight:
                         if i == 0:
                             stdscr.addstr(y, x + 2, " ", curses.color_pair(240))
@@ -649,10 +582,10 @@ class game():
                             stdscr.addstr(y, x - 1, " ", curses.color_pair(240))
                             stdscr.addstr(y + 1, x - 1, "▄▄▄▄", curses.color_pair(238))
 
-            #datamine completion
+            # Display datamine status
             arrow = "∇"
             text = arrow * (i + 1)
-            y_offset = 6 + i * 2  # Offset each datamine's label to its row
+            y_offset = 6 + i * 2
             string_INSTALLED = f"  INSTALLED                 {text:>3} DATAMINE_V{i+1}  "
             string_FAILED = f"  FAILED                    {text:>3} DATAMINE_V{i+1}  "
             if self.completed_datamines[i]:
@@ -675,14 +608,11 @@ class game():
     def is_over_grid(self, pos):
         """Check if a coordinate is within the interactive grid areas."""
         x, y = pos
-        # Check if over the 5x5 matrix grid
-        # Each cell is 2 chars wide, with 3 chars padding (total 5).
-        # We check if the cursor is on the 2 chars of data.
+        # Matrix grid: 2 chars wide with 3 char spacing
         is_over_matrix = (y >= 6 and y <= 14 and y % 2 == 0) and \
                          (x >= 9 and x <= 33 and (x - 9) % 5 < 2)
 
-        # Check if over the 4x3 datamine grid
-        # Each cell is 2 chars wide, with 2 chars padding (total 4).
+        # Datamine grid: 2 chars wide with 2 char spacing
         is_over_datamines = (y >= 6 and y <= 10 and y % 2 == 0) and \
                             (x >= 41 and x <= 56 and (x - 41) % 4 < 2)
 
@@ -718,19 +648,18 @@ class game():
     def main(self, stdscr):
         stdscr.clear()
 
-        curses.curs_set(0) # Hides the cursor
+        curses.curs_set(0)
         self.color_init(stdscr)
 
-        # Get screen dimensions
+        # Check minimum screen size
         max_y, max_x = stdscr.getmaxyx()
         if max_y < 16 or max_x < 84:
             stdscr.addstr(0, 0, "Screen size too small. Minimum size is 14 rows and 84 columns.", curses.color_pair(1))
             stdscr.refresh()
             stdscr.getch()
 
-        # Enable mouse tracking with all possible options
         curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
-        stdscr.nodelay(True)  # Make getch non-blocking
+        stdscr.nodelay(True)
 
         self.update_gui(stdscr, self.active_axis, self.last_selected, self.hovering, first=True)
 
@@ -750,7 +679,6 @@ class game():
             try:
                 _, x, y, _, button = curses.getmouse()
             except curses.error:
-                # No mouse event, or invalid event
                 x, y, button = -1, -1, 0
 
             if key == curses.KEY_MOUSE:
@@ -766,15 +694,10 @@ class game():
             self.hovering = [x, y]
 
             if not self.hovering == self.old_hovering:
-                # Refresh if the mouse enters or leaves a grid area.
                 if self.is_over_grid(self.hovering) or self.is_over_grid(self.old_hovering):
                     _, _, self.finished_by_completion = self.update_gui(stdscr, self.active_axis, self.last_selected, self.hovering)
-                    #stdscr.addstr(16, 0, f"Hovering over: {self.hovering}      ", curses.color_pair(255))
 
             self.old_hovering = self.hovering
-
-            #9,6; 30, 14 #matrix dimenstions
-            #41, 6; 55, 10 #datamine dimensions
         
         time.sleep(2)
 
