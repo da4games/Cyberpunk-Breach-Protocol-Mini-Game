@@ -26,7 +26,7 @@ cd Cyberpunk-Netrunner-Mini-Game
 ```
 
 2. Install Python 3.13.3 (Windows x64 version recommended)  
-    <span style="color: #0066cc;">**Note:**</span> ARM-based systems HAVE to have paython x64 version selected since windows-curses is not supported for ARM versions of python
+    <code style="color: #0066cc;">**Note:**</code> ARM-based systems HAVE to have paython x64 version selected since windows-curses is not supported for ARM versions of python
 
 3. Install windows-curses:
 ```console
