@@ -21,19 +21,24 @@ A fan-made, terminal-based remake of the **Breach Protocol** mini-game from *Cyb
 ## Installation
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/Cyberpunk-Netrunner-Mini-Game.git
-cd Cyberpunk-Netrunner-Mini-Game
+git clone https://github.com/da4games/Cyberpunk-Breach-Protocol-Mini-Game
+cd Cyberpunk-Breach-Protocol-Mini-Game
 ```
 <br>
 
 2. Install Python 3.13.3 (Windows x64 version recommended)  <br><br>
-   > **Note:** ARM-based systems HAVE to have paython x64 version selected since windows-curses is not supported for ARM versions of python  
+   > **Note:** ARM-based systems should either use python x64 or install the pre-compiled wheel for curses  
 <br>
 
 3. Install windows-curses:
+   - For python 3.13.3 x64:
 ```console
 pip install windows-curses
 ```
+   - For ARM64 python:
+      Download **python_curses-2.2.3-cp313-cp313-win_arm64.whl** from [Experimental Wheels for Python for Windows on ARM64 v2025.3.31](https://github.com/cgohlke/win_arm64-wheels/releases/tag/v2025.3.31) which is contained in the zip file.
+     
+     > WARNING: This method is experimental and may not work as expected
 <br>
  
 4. Run the game:
