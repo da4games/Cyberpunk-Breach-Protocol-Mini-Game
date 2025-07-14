@@ -30,7 +30,9 @@ cd Cyberpunk-Breach-Protocol-Mini-Game
    > **Note:** ARM-based systems should either use python x64 or install the pre-compiled wheel for curses  
 <br>
 
-3. Install windows-curses:
+3. Install curses:
+   - For the best experience just download the code with the venv and select it s your python version.
+     
    - For python 3.13.3 x64:
 ```console
 pip install windows-curses
