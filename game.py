@@ -37,6 +37,11 @@ class game():
         self.completed_datamines = [False, False, False]
         self.failed_datamines = [False, False, False]
         self.datamine_current_offsets = [0, 0, 0]  # On-screen position offsets
+        
+        # Timer update control
+        self.last_timer_update = 0
+        self.timer_update_interval = 0.01  # Update every 10ms
+        self.animating = False  # Flag to prevent timer refreshes during animations
 
     def color_init(self, stdscr):
         curses.start_color()
@@ -109,7 +114,7 @@ class game():
 
         # Generate filler hex pairs until we have 25 total
         def random_hex_pair():
-            return f"{self.CHARACTERS[random.randint(0, 4)]}"
+            return f"{self.CHARACTERS[random.randint(0, 5)]}"
 
         while len(mandatory) < 25:
             mandatory.append(random_hex_pair())
@@ -125,7 +130,6 @@ class game():
 
     def update_gui(self, stdscr, active_axis: int, last_selected: list[int], hovering: list[int], clicked=False, first=False):
         stdscr.clear()
-        self.draw_time(stdscr, 0, 30)
         hovering_over = ""
         click_executed = False
         click_location = [0, 0]
@@ -161,7 +165,7 @@ class game():
             for i in range(len(self.datamines)):
                 self.datamines[i] = []
                 for j in range(num_chars[i]):
-                    self.datamines[i].append(self.CHARACTERS[random.randint(0, 4)])
+                    self.datamines[i].append(self.CHARACTERS[random.randint(0, 5)])
             
             next_datamine = random.randint(1, 2)
             
@@ -370,7 +374,7 @@ class game():
             else:
                 stdscr.addstr(2, 61-i*4, "░░", curses.color_pair(255))
 
-        stdscr.addstr(4, 41,  "SEUENCE REQUIRED TO UPLOAD", curses.color_pair(255))
+        stdscr.addstr(4, 41,  "SEQUENCE REQUIRED TO UPLOAD", curses.color_pair(255))
 
         # Datamine animation and display logic
         if clicked and click_executed:
@@ -406,6 +410,11 @@ class game():
                         pass  # Allow reset for restarted datamines
                     else:
                         target_offsets[i] = max(target_offsets[i], self.datamine_current_offsets[i])
+                
+                # Special handling: completed datamines should maintain their final offset
+                for i in range(len(target_offsets)):
+                    if self.completed_datamines[i] or self.failed_datamines[i]:
+                        target_offsets[i] = self.datamine_current_offsets[i]
 
             # Calculate animation frame counts
             max_shift = 0
@@ -419,14 +428,20 @@ class game():
             animation_frames = max(shift_animation_frames, swoop_animation_frames)
 
             if animation_frames > 0:
+                # Set animation flag to prevent timer refreshes
+                self.animating = True
+                
                 for frame in range(animation_frames + 1):
+                    # Update timer at the start of each frame
+                    self.update_timer_if_needed(stdscr)
+                    
                     # Redraw static UI elements
                     stdscr.addstr(0, 41, "BUFFER", curses.color_pair(255))
                     for i_buf in range(len(self.buffer)):
                         stdscr.addstr(2, 41 + i_buf * 4, f"{self.buffer[i_buf]}", curses.color_pair(255))
                     for i_buf in range(self.max_buffer_length - len(self.buffer)):
                         stdscr.addstr(2, 61 - i_buf * 4, "░░", curses.color_pair(255))
-                    stdscr.addstr(4, 41, "SEUENCE REQUIRED TO UPLOAD", curses.color_pair(255))
+                    stdscr.addstr(4, 41, "SEQUENCE REQUIRED TO UPLOAD", curses.color_pair(255))
                     
                     # Animate datamines
                     for i in range(len(self.datamines)):
@@ -489,10 +504,13 @@ class game():
                             stdscr.addstr(y, 73, f"DATAMINE_V{i+1}")
                             stdscr.addstr(y, 69, f"{arrow:>3}", curses.color_pair(255))
 
-                    if self.time_left is not None:
-                        self.draw_time(stdscr, self.time_left, self.time_given)
                     stdscr.refresh()
+                    
+                    # Simple sleep without timer updates to avoid interference
                     time.sleep(0.008)
+                
+                # Clear animation flag
+                self.animating = False
             
             # Update animation state after completion
             self.datamine_current_offsets = target_offsets
@@ -535,6 +553,12 @@ class game():
                         pass  # Allow reset for restarted datamines
                     else:
                         target_offsets[i] = max(target_offsets[i], self.datamine_current_offsets[i])
+                
+                # Special handling: completed datamines should maintain their final offset
+                for i in range(len(target_offsets)):
+                    if self.completed_datamines[i] or self.failed_datamines[i]:
+                        target_offsets[i] = self.datamine_current_offsets[i]
+                
                 self.datamine_current_offsets = target_offsets
 
 
@@ -645,6 +669,36 @@ class game():
 
         stdscr.refresh()
 
+    def update_timer_if_needed(self, stdscr):
+        """Update timer display if enough time has passed"""
+        current_time = time.time()
+        if current_time - self.last_timer_update >= self.timer_update_interval:
+            if self.start_time:
+                elapsed_time = current_time - self.start_time
+                self.time_left = max(0, self.time_given - elapsed_time)
+            # Only refresh if not animating
+            if not self.animating:
+                self.draw_time(stdscr, self.time_left, self.time_given)
+            else:
+                # Update timer display without refresh during animations
+                self.draw_time_no_refresh(stdscr, self.time_left, self.time_given)
+            self.last_timer_update = current_time
+
+    def draw_time_no_refresh(self, stdscr, time_left, time_given):
+        """Draw timer without calling refresh (for use during animations)"""
+        seconds = int(time_left)
+        milliseconds = int((time_left - seconds) * 100)
+        time_left_str = f"{seconds:02}:{milliseconds:02}"
+
+        stdscr.addstr(1, 34, f"{time_left_str:>5}", curses.color_pair(255))
+
+        progress_bar_full_length = 38
+        progress_chars_count = int(progress_bar_full_length * (time_left / time_given))
+        progress_bar_str = '▄' * progress_chars_count
+        stdscr.addstr(2, 1, f"{progress_bar_str:█<{progress_bar_full_length}}", curses.color_pair(253))
+
+    # ...existing code...
+
     def main(self, stdscr):
         stdscr.clear()
 
@@ -661,19 +715,17 @@ class game():
         curses.mousemask(curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
         stdscr.nodelay(True)
 
+        # Initial timer display
+        self.draw_time(stdscr, self.time_left, self.time_given)
+        
         self.update_gui(stdscr, self.active_axis, self.last_selected, self.hovering, first=True)
 
         while len(self.buffer) < 6 and self.finished_by_completion == False:
-            if self.start_time:
-                elapsed_time = time.time() - self.start_time
-                self.time_left = max(0, self.time_given - elapsed_time)
-            else:
-                time_left = self.time_given
+            # Update timer regularly
+            self.update_timer_if_needed(stdscr)
 
             if self.start_time and self.time_left == 0:
                 break
-            
-            self.draw_time(stdscr, self.time_left, self.time_given)
 
             key = stdscr.getch()
             try:
@@ -699,6 +751,9 @@ class game():
 
             self.old_hovering = self.hovering
         
+        # Final timer update and display before ending
+        self.update_timer_if_needed(stdscr)
+        stdscr.refresh()
         time.sleep(2)
 
 if __name__ == "__main__":
