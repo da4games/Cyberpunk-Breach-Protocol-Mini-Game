@@ -2,6 +2,9 @@ import curses
 import random
 import time
 
+#To-Do:
+# 1. Fiddel with some animations to make it more acuurate to Cyberpunk 2077
+
 class game():
     def __init__(self):
         self.CHARACTERS = ("55", "BD", "1C", "E9", "FF", "7A")
@@ -47,52 +50,60 @@ class game():
         curses.start_color()
         curses.use_default_colors()
 
+        # Default background and foreground
         default_bg_id = 21
         default_fg_id = 22
         very_exact_color_of_bg = 94
         very_exact_color_of_fg = 898
         curses.init_color(default_bg_id, very_exact_color_of_bg, very_exact_color_of_bg, very_exact_color_of_bg)
         curses.init_color(default_fg_id, very_exact_color_of_fg, very_exact_color_of_fg, very_exact_color_of_fg)
-        curses.init_pair(default_bg_id, curses.COLOR_WHITE, default_bg_id)
+        curses.init_pair(default_bg_id, curses.COLOR_WHITE, default_bg_id)  # (fg=white, bg=default_bg)
 
-        # Cyberpunk green: rgb(208, 236, 88) converted to curses values (0-1000)
-        curses.init_color(277, 816, 925, 345) 
-        curses.init_pair(255, 277, default_bg_id)
-        curses.init_pair(254, curses.COLOR_BLACK, 277)
-        curses.init_pair(253, default_bg_id, 277)
+        # Cyberpunk green: rgb(53, 60, 22)
+        curses.init_color(277, 816, 925, 345)
+        curses.init_pair(255, 277, default_bg_id)  # (fg=green, bg=default_bg)
+        curses.init_pair(254, curses.COLOR_BLACK, 277)  # (fg=black, bg=green)
+        curses.init_pair(253, default_bg_id, 277)  # (fg=default_bg, bg=green)
 
+        # Dark gray-blue: rgb(41, 45, 57) # the gray bar in the matrix
         curses.init_color(276, 161, 176, 224)
-        curses.init_pair(252, 277, 276)
-        curses.init_pair(251, default_bg_id, 276)
-        curses.init_pair(250, 276, default_bg_id)
-        curses.init_pair(241, curses.COLOR_WHITE, 276)
+        curses.init_pair(252, 277, 276)  # (fg=green, bg=dark_gray_blue)
+        curses.init_pair(251, default_bg_id, 276)  # (fg=default_bg, bg=dark_gray_blue)
+        curses.init_pair(250, 276, default_bg_id)  # (fg=dark_gray_blue, bg=default_bg)
+        curses.init_pair(241, curses.COLOR_WHITE, 276)  # (fg=white, bg=dark_gray_blue)
 
+        # Cyan: rgb(139, 202, 202)
         curses.init_color(275, 545, 788, 788)
-        curses.init_pair(249, 275, 276)
-        curses.init_pair(248, 275, default_bg_id)
+        curses.init_pair(249, 275, 276)  # (fg=cyan, bg=dark_gray_blue) --> selected cell in matrix
+        curses.init_pair(248, 275, default_bg_id)  # (fg=cyan, bg=default_bg)
 
+        # Dark gray: rgb(61, 65, 76)
         curses.init_color(274, 239, 255, 302)
-        curses.init_pair(247, 274, 276)
-        curses.init_pair(246, 274, default_bg_id)
+        curses.init_pair(247, 274, 276)  # (fg=dark_gray, bg=dark_gray_blue)
+        curses.init_pair(246, 274, default_bg_id)  # (fg=dark_gray, bg=default_bg)
 
+        # Dark green: rgb(31, 32, 26)
         curses.init_color(273, 122, 125, 102)
-        curses.init_pair(245, 277, 273)
-        curses.init_pair(244, 273, default_bg_id)
-        curses.init_pair(243, default_bg_id, 273)
-        curses.init_pair(242, 273, 274)
+        curses.init_pair(245, 277, 273)  # (fg=green, bg=dark_green)
+        curses.init_pair(244, 273, default_bg_id)  # (fg=dark_green, bg=default_bg)
+        curses.init_pair(243, default_bg_id, 273)  # (fg=default_bg, bg=dark_green)
+        curses.init_pair(242, 273, 274)  # (fg=dark_green, bg=dark_gray)
 
+        # Very dark blue: rgb(24, 24, 42)
         curses.init_color(272, 94, 94, 165)
-        curses.init_pair(240, curses.COLOR_WHITE, 272)
-        curses.init_pair(239, 272, default_bg_id)
-        curses.init_pair(238, default_bg_id, 272)
-        curses.init_pair(237, 275, 272)
+        curses.init_pair(240, curses.COLOR_WHITE, 272)  # (fg=white, bg=very_dark_blue)
+        curses.init_pair(239, 272, default_bg_id)  # (fg=very_dark_blue, bg=default_bg)
+        curses.init_pair(238, default_bg_id, 272)  # (fg=default_bg, bg=very_dark_blue)
+        curses.init_pair(237, 275, 272)  # (fg=cyan, bg=very_dark_blue)
 
-        curses.init_color(271, 992, 380, 318)  # Failed red
-        curses.init_color(270, 192, 827, 498)  # Success green
-        curses.init_pair(236, curses.COLOR_BLACK, 271)
-        curses.init_pair(235, curses.COLOR_BLACK, 270)
-        curses.init_pair(234, default_bg_id, 271)
-        curses.init_pair(233, default_bg_id, 270)
+        # Failed red: rgb(253, 97, 81)
+        curses.init_color(271, 992, 380, 318)
+        # Success green: rgb(49, 211, 126)
+        curses.init_color(270, 192, 827, 498)
+        curses.init_pair(236, curses.COLOR_BLACK, 271)  # (fg=black, bg=failed_red)
+        curses.init_pair(235, curses.COLOR_BLACK, 270)  # (fg=black, bg=success_green)
+        curses.init_pair(234, default_bg_id, 271)  # (fg=default_bg, bg=failed_red)
+        curses.init_pair(233, default_bg_id, 270)  # (fg=default_bg, bg=success_green)
 
     def build_code_matrix(self, datamines):
         """
@@ -157,26 +168,48 @@ class game():
             else:
                 num_chars[i] = len(self.datamines[i])
 
-        # Generate hex sequences with chain connections on first run
+        # Generate hex sequences with more realistic connections on first run
         if first:
-            # Create datamine sequences that chain together:
-            # Option 1: 1→2→3→1 or Option 2: 1→3→2→1
-            
+            # Generate initial random sequences for all datamines
             for i in range(len(self.datamines)):
                 self.datamines[i] = []
                 for j in range(num_chars[i]):
                     self.datamines[i].append(self.CHARACTERS[random.randint(0, 5)])
             
-            next_datamine = random.randint(1, 2)
+            # Randomly decide connection strategy with weighted probabilities
+            connection_type = random.choices(
+                ['full_chain', 'partial_chain', 'independent', 'pairs'],
+                weights=[25, 35, 25, 15],  # More realistic distribution
+                k=1
+            )[0]
             
-            if next_datamine == 1:
-                self.datamines[1][0] = self.datamines[0][-1]
-                self.datamines[2][0] = self.datamines[1][-1]
-                self.datamines[2][-1] = self.datamines[0][0]
-            elif next_datamine == 2:
-                self.datamines[2][0] = self.datamines[0][-1]
-                self.datamines[1][0] = self.datamines[2][-1]
-                self.datamines[1][-1] = self.datamines[0][0]
+            if connection_type == 'full_chain':
+                # All datamines chain together (original behavior)
+                next_datamine = random.randint(1, 2)
+                if next_datamine == 1:
+                    self.datamines[1][0] = self.datamines[0][-1]
+                    self.datamines[2][0] = self.datamines[1][-1]
+                else:
+                    self.datamines[2][0] = self.datamines[0][-1]
+                    self.datamines[1][0] = self.datamines[2][-1]
+                    
+            elif connection_type == 'partial_chain':
+                # Only two datamines chain together
+                chain_pair = random.choice([(0, 1), (0, 2), (1, 2)])
+                first_dm, second_dm = chain_pair
+                self.datamines[second_dm][0] = self.datamines[first_dm][-1]
+                
+            elif connection_type == 'pairs':
+                # Two datamines might share a common hex at different positions
+                if random.random() < 0.7:  # 70% chance of having shared hex
+                    shared_hex = self.CHARACTERS[random.randint(0, 5)]
+                    dm1, dm2 = random.sample(range(3), 2)  # Pick two different datamines
+                    pos1 = random.randint(0, len(self.datamines[dm1]) - 1)
+                    pos2 = random.randint(0, len(self.datamines[dm2]) - 1)
+                    self.datamines[dm1][pos1] = shared_hex
+                    self.datamines[dm2][pos2] = shared_hex
+                    
+            # connection_type == 'independent' means no connections (sequences remain as generated)
         
         # Initialize highlighting arrays
         gray = []
@@ -243,6 +276,20 @@ class game():
                 x_coord = gray_selected[0]
                 for i in range(len(self.code_matrix)):
                     green_bg.append([x_coord, i])
+        else:
+            # Make green bar follow cursor when hovering in matrix but not over gray bar
+            if (hover_matrix_x != -1 and hover_matrix_y != -1 and 
+                [hover_matrix_x, hover_matrix_y] not in gray):
+                
+                if active_axis == 0:  # current vertical, next would be horizontal
+                    y_coord = hover_matrix_y
+                    for j in range(len(self.code_matrix[y_coord])):
+                        green_bg.append([j, y_coord])
+
+                if active_axis == 1:  # current horizontal, next would be vertical
+                    x_coord = hover_matrix_x
+                    for i in range(len(self.code_matrix)):
+                        green_bg.append([x_coord, i])
 
         datamine_completed = self.get_datamine_completion(self.buffer, self.datamines)
 
@@ -299,8 +346,12 @@ class game():
                 # Apply character styling based on state
                 if is_gray_selected:
                     stdscr.addstr(y, x, data, curses.color_pair(249))
-                elif datamine_hover_char and data == datamine_hover_char and is_gray and not is_gray_gray:
-                    stdscr.addstr(y, x, data, curses.color_pair(249))
+                elif datamine_hover_char and data == datamine_hover_char and not is_gray_gray:
+                    # Highlight ALL instances of the hovered hex code, not just on selectable axis
+                    if is_gray:
+                        stdscr.addstr(y, x, data, curses.color_pair(249))
+                    else:
+                        stdscr.addstr(y, x, data, curses.color_pair(248))
                 elif is_gray_gray and is_gray:
                     stdscr.addstr(y, x, data, curses.color_pair(247))
                 elif is_gray_gray and is_green_bg:
