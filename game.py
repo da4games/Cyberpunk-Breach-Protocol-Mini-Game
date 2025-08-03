@@ -3,35 +3,30 @@ import random
 import time
 
 #To-Do:
-# 1. the shifting of the datamines is broken in some ways. Fix it
-# 2. make datamine completion/ failure fatter. it should look like this EXAMPLE:
+# 1. update end-screen
+# 2. add a boundary around the datamines using ─│┌┐└┘├┤: LINE 461
 
-#▄████████████████████████████████████████████
-#  INSTALLED                   ∇ DATAMINE_V1   <-- 236 or 235
-#▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀ <-- from 234 to 229 depending on status of both datamines (one completed, one failed, completed and failed, failed and completed and so on) 
-#  INSTALLED                  ∇∇ DATAMINE_V2  
-#▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
-#  INSTALLED                 ∇∇∇ DATAMINE_V3  
-#████████████████████████████████████████████▀
-
-# it should also appear top to bottom instead of left to right
-
-# 3. update end-screen
-
-class game():
+class Game():
     def __init__(self):
+        # Available hex characters for the breach protocol game
         self.CHARACTERS = ("55", "BD", "1C", "E9", "FF", "7A")
         
+        # Current selectable axis: 1 = horizontal, 0 = vertical
         self.active_axis = 1  # 1 = horizontal, 0 = vertical
+        # Last selected position in the matrix
         self.last_selected = [0, 0]  # x, y coordinates in matrix
+        # Current mouse hover position
         self.hovering = [0, 0]
+        # Previous hover position for change detection
         self.old_hovering = [0, 0]
         
+        # Timer management
         self.start_time = None
         self.time_given = 30
         self.time_left = self.time_given
         self.finished_by_completion = False
         
+        # 5x5 matrix containing hex codes for selection
         self.code_matrix = [
         ["", "", "", "", ""],
         ["", "", "", "", ""],
@@ -40,19 +35,22 @@ class game():
         ["", "", "", "", ""]
         ]
 
+        # Three datamine sequences that need to be completed
         self.datamines = [
             [],
             [],
             []]
 
+        # Player's selected sequence buffer
         self.buffer = []
         self.max_buffer_length = 6
 
+        # Datamine state tracking
         self.dv_firsts = [False, False, False]  # Track datamine animation state
-        self.datamine_completed_before = [0, 0, 0]
-        self.completed_datamines = [False, False, False]
-        self.failed_datamines = [False, False, False]
-        self.datamine_current_offsets = [0, 0, 0]  # On-screen position offsets
+        self.datamine_completed_before = [0, 0, 0]  # Previous completion counts
+        self.completed_datamines = [False, False, False]  # Successfully completed datamines
+        self.failed_datamines = [False, False, False]  # Failed datamines (impossible to complete)
+        self.datamine_current_offsets = [0, 0, 0]  # On-screen position offsets for alignment
         
         # Timer update control
         self.last_timer_update = 0
@@ -60,10 +58,11 @@ class game():
         self.animating = False  # Flag to prevent timer refreshes during animations
 
     def color_init(self, stdscr):
+        """Initialize all color pairs for the cyberpunk-themed interface."""
         curses.start_color()
         curses.use_default_colors()
 
-        # Default background and foreground
+        # Base colors for the interface
         default_bg_id = 21
         default_fg_id = 22
         very_exact_color_of_bg = 94
@@ -127,6 +126,11 @@ class game():
         # Additional color pairs for border highlighting between datamines  
         curses.init_pair(226, 270, 272)  # (fg=success_green, bg=very_dark_blue) for green datamine highlighting
         curses.init_pair(225, 271, 272)  # (fg=failed_red, bg=very_dark_blue) for red datamine highlighting
+        
+        curses.init_color(269, 79, 145, 102)  # Custom darker green for finish screen
+        curses.init_pair(224, 270, 269)  # (fg=success_green, bg=darker_green)
+        curses.init_color(268, 224, 63, 55)  # Custom dark red for error messages
+        curses.init_pair(223, 271, 268)  # (fg=dark_red, bg=default_bg)
 
     def build_code_matrix(self, datamines):
         """
@@ -234,12 +238,12 @@ class game():
                     
             # connection_type == 'independent' means no connections (sequences remain as generated)
         
-        # Initialize highlighting arrays
-        gray = []
-        gray_selected = []
-        gray_gray = []
-        green_bg = []
-        datamine_hover_char = ""
+        # Initialize cell highlighting arrays for different states
+        gray = []         # Cells on the selectable axis
+        gray_selected = []  # Currently hovered cell (if on selectable axis)
+        gray_gray = []     # Already used/clicked cells
+        green_bg = []      # Cells on the next potential axis
+        datamine_hover_char = ""  # Character being hovered in datamine area
 
         # Populate selectable axis cells
         if active_axis == 0:  # vertical
@@ -252,32 +256,39 @@ class game():
             for j in range(len(self.code_matrix[y_coord])):
                 gray.append([j, y_coord])
 
-        # Handle mouse hover selection
+        # Handle mouse hover selection within the matrix bounds
         hover_matrix_x = -1
         hover_matrix_y = -1
+        # Check if mouse is within matrix area (x: 9-30, y: 6-14)
         if hovering[0] >= 9 and hovering[0] <= 30 and hovering[1] >= 6 and hovering[1] <= 14:
             x_found = False
             y_found = False
 
+            # Matrix rows are on even y coordinates (6, 8, 10, 12, 14)
             if hovering[1] % 2 == 0:
                 y_found = True
                 hover_matrix_y = (hovering[1] - 6) // 2               
+            # Matrix columns are spaced 5 apart, with 2-char width
             if (hovering[0] - 9) % 5 <= 1:
                 x_found = True
                 hover_matrix_x = (hovering[0] - 9) // 5
 
+            # Only highlight if over a selectable cell that isn't already used
             if x_found and y_found and [hover_matrix_x, hover_matrix_y] in gray:
                 if self.code_matrix[hover_matrix_y][hover_matrix_x] != "[]":
                     hovering_over = self.code_matrix[hover_matrix_y][hover_matrix_x]
                     gray_selected = [hover_matrix_x, hover_matrix_y]
 
+        # Handle mouse clicks
         if clicked:
             if hovering_over in self.CHARACTERS:
                 if len(self.buffer) < self.max_buffer_length:
+                    # Store completion state before adding to buffer
                     self.datamine_completed_before = self.get_datamine_completion(self.buffer, self.datamines)
                     gray_gray.append(gray_selected)
                     self.buffer.append(hovering_over)
                     click_location = gray_selected.copy()
+                    # Mark cell as used with empty brackets
                     self.code_matrix[gray_selected[1]][gray_selected[0]] = "[]"
                     gray_selected = []
                     click_executed = True
@@ -355,11 +366,11 @@ class game():
             
             max_completed = max(effective_progress) if any(effective_progress) else 0
             for i_data, datamine in enumerate(self.datamines):
-                y_datamine = 6 + i_data * 2
+                y_datamine = 7 + i_data * 2
                 if hovering[1] == y_datamine:
                     x_offset = self.datamine_current_offsets[i_data]
                     for j_data, char_data in enumerate(datamine):
-                        x_datamine = 41 + (j_data + x_offset) * 4
+                        x_datamine = 42 + (j_data + x_offset) * 4
                         if hovering[0] >= x_datamine and hovering[0] <= x_datamine + 1:
                             datamine_hover_char = char_data
                             break
@@ -454,18 +465,50 @@ class game():
                             stdscr.addstr(y - 1, x-1, "▄▄▄▄", curses.color_pair(250 if is_gray else 244))
 
         # Buffer display
-        stdscr.addstr(0, 41, "BUFFER", curses.color_pair(255))
+        stdscr.addstr(0, 42, "BUFFER", curses.color_pair(255))
 
         for i in range(len(self.buffer)):
-            stdscr.addstr(2, 41+i*4, f"{self.buffer[i]}", curses.color_pair(255))
+            stdscr.addstr(2, 42+i*4, f"{self.buffer[i]}", curses.color_pair(255))
 
         for i in range(self.max_buffer_length - len(self.buffer)):
             if i == 5 - len(self.buffer) and hovering_over != "":
-                stdscr.addstr(2, 61-i*4, hovering_over, curses.color_pair(248))
+                stdscr.addstr(2, 62-i*4, hovering_over, curses.color_pair(248))
             else:
-                stdscr.addstr(2, 61-i*4, "░░", curses.color_pair(255))
+                stdscr.addstr(2, 62-i*4, "░░", curses.color_pair(255))
 
-        stdscr.addstr(4, 41,  "SEQUENCE REQUIRED TO UPLOAD", curses.color_pair(255))
+        #static images ─│┌┐└┘├┤
+        # Draw the border box around the datamine area
+        stdscr.addstr(4, 42, "SEQUENCE REQUIRED TO UPLOAD", curses.color_pair(255))
+        # Left border
+        stdscr.addstr(3, 40,  "┌", curses.color_pair(255))
+        stdscr.addstr(4, 40,  "│", curses.color_pair(255))
+        stdscr.addstr(5, 40,  "├", curses.color_pair(255))
+        stdscr.addstr(6, 40,  "│", curses.color_pair(255))
+        stdscr.addstr(7, 40,  "│", curses.color_pair(255))
+        stdscr.addstr(8, 40,  "│", curses.color_pair(255))
+        stdscr.addstr(9, 40,  "│", curses.color_pair(255))
+        stdscr.addstr(10, 40, "│", curses.color_pair(255))
+        stdscr.addstr(11, 40, "│", curses.color_pair(255))
+        stdscr.addstr(12, 40, "│", curses.color_pair(255))
+        stdscr.addstr(13, 40, "└", curses.color_pair(255))
+        
+        # Right border
+        stdscr.addstr(3, 85,  "┐", curses.color_pair(255))
+        stdscr.addstr(4, 85,  "│", curses.color_pair(255))
+        stdscr.addstr(5, 85,  "┤", curses.color_pair(255))
+        stdscr.addstr(6, 85,  "│", curses.color_pair(255))
+        stdscr.addstr(7, 85,  "│", curses.color_pair(255))
+        stdscr.addstr(8, 85,  "│", curses.color_pair(255))
+        stdscr.addstr(9, 85,  "│", curses.color_pair(255))
+        stdscr.addstr(10, 85, "│", curses.color_pair(255))
+        stdscr.addstr(11, 85, "│", curses.color_pair(255))
+        stdscr.addstr(12, 85, "│", curses.color_pair(255))
+        stdscr.addstr(13, 85, "┘", curses.color_pair(255))
+        
+        # Horizontal borders
+        stdscr.addstr(3, 41,  "─" * 44, curses.color_pair(255))
+        stdscr.addstr(5, 41,  "─" * 44, curses.color_pair(255))
+        stdscr.addstr(13, 41, "─" * 44, curses.color_pair(255))
 
         # Datamine animation and display logic
         if clicked and click_executed:
@@ -493,21 +536,13 @@ class game():
                     # Update timer at the start of each frame
                     self.update_timer_if_needed(stdscr)
                     
-                    # Redraw static UI elements
-                    stdscr.addstr(0, 41, "BUFFER", curses.color_pair(255))
-                    for i_buf in range(len(self.buffer)):
-                        stdscr.addstr(2, 41 + i_buf * 4, f"{self.buffer[i_buf]}", curses.color_pair(255))
-                    for i_buf in range(self.max_buffer_length - len(self.buffer)):
-                        stdscr.addstr(2, 61 - i_buf * 4, "░░", curses.color_pair(255))
-                    stdscr.addstr(4, 41, "SEQUENCE REQUIRED TO UPLOAD", curses.color_pair(255))
-                    
                     # Animate datamines
                     for i in range(len(self.datamines)):
-                        y = 6 + i * 2
-                        # Clear the entire area (including border areas)
-                        stdscr.addstr(y - 1, 41, " " * 47)
-                        stdscr.addstr(y, 41, " " * 47)
-                        stdscr.addstr(y + 1, 41, " " * 47)
+                        y = 7 + i * 2
+                        # Clear the entire area (stopping before right border at x=85)
+                        stdscr.addstr(y - 1, 41, " " * 44)
+                        stdscr.addstr(y, 41, " " * 44)
+                        stdscr.addstr(y + 1, 41, " " * 44)
 
                         # Display completed/failed datamines with top-to-bottom animation
                         if self.completed_datamines[i] or self.failed_datamines[i]:
@@ -522,7 +557,7 @@ class game():
                             current_offset = start_offset + (target_offset - start_offset) * progress
 
                             for j, char_data in enumerate(self.datamines[i]):
-                                x = 41 + round((j + current_offset) * 4)
+                                x = 42 + round((j + current_offset) * 4)
                                 is_next_char = (j == datamine_completed[i])
                                 if is_next_char:
                                     stdscr.addstr(y, x, char_data, curses.color_pair(240))
@@ -557,12 +592,12 @@ class game():
 
         # Final drawing of datamines (non-animation path)             
         for i in range(len(self.datamines)):
-            y = 6 + i * 2
+            y = 7 + i * 2
             
             # Only draw hex codes for unfinished datamines
             if not self.completed_datamines[i] and not self.failed_datamines[i]:
                 for j in range(num_chars[i]):
-                    x = 41 + (j + self.datamine_current_offsets[i]) * 4
+                    x = 42 + (j + self.datamine_current_offsets[i]) * 4
                     
                     data = self.datamines[i][j]
 
@@ -614,7 +649,7 @@ class game():
                                            self.failed_datamines[i])
             else:
                 arrow = "∇" * (i + 1)
-                y_pos = 6 + i * 2
+                y_pos = 7 + i * 2
                 stdscr.addstr(y_pos, 73, f"DATAMINE_V{i+1}")
                 stdscr.addstr(y_pos, 69, f"{arrow:>3}", curses.color_pair(255))
 
@@ -633,10 +668,10 @@ class game():
                          (x >= 9 and x <= 33 and (x - 9) % 5 < 2)
 
         # Datamine grid: 2 chars wide with 4 char spacing, extended to account for shifted datamines
-        # Calculate maximum possible extent: 41 + (max_chars + max_offset) * 4 + 1
-        # Assuming max 4 chars + max offset of 4 = 8 * 4 = 32, so max x would be around 73
-        is_over_datamines = (y >= 6 and y <= 10 and y % 2 == 0) and \
-                            (x >= 41 and x <= 73 and (x - 41) % 4 < 2)
+        # Calculate maximum possible extent: 42 + (max_chars + max_offset) * 4 + 1
+        # Assuming max 4 chars + max offset of 4 = 8 * 4 = 32, so max x would be around 74
+        is_over_datamines = (y >= 7 and y <= 11 and y % 2 == 1) and \
+                            (x >= 42 and x <= 74 and (x - 42) % 4 < 2)
 
         return is_over_matrix or is_over_datamines
 
@@ -796,53 +831,44 @@ class game():
         Draw the thick block-style datamine completion/failure display.
         Progress goes from 0.0 to 1.0 for top-to-bottom animation.
         """
-        y_base = 6 + i * 2
-        
-        # Top border (▀ characters) - only for first datamine
-        if is_completed:
-            top_border_color = 233
-        elif is_failed:
-            top_border_color = 234
-        else:
-            top_border_color = None
-        
-        if top_border_color:
-            stdscr.addstr(y_base - 1, 41, "▀" * 45, curses.color_pair(top_border_color))
+        y_base = 7 + i * 2
         
         # Main content row
         arrow = "∇" * (i + 1)
         if is_completed:
-            content = f"  INSTALLED                 {arrow:>3} DATAMINE_V{i+1}  "
+            content = f"  INSTALLED                {arrow:>3} DATAMINE_V{i+1}  "
             content_color = 235
         elif is_failed:
-            content = f"  FAILED                    {arrow:>3} DATAMINE_V{i+1}  "
+            content = f"  FAILED                   {arrow:>3} DATAMINE_V{i+1}  "
             content_color = 236
         else:
-            content = f"                              {arrow:>3} DATAMINE_V{i+1}  "
+            content = f"                             {arrow:>3} DATAMINE_V{i+1}  "
             content_color = 255
         
         stdscr.addstr(y_base, 41, content, curses.color_pair(content_color))
         
-        # Border between datamines (▀ characters)
+        # Border between datamines (▀ characters) - calculate colors first
+        upper_border_color = None
+        lower_border_color = None
         
-        if not i == 0: # no normal upper border for first datamine
+        # Determine border colors based on adjacent datamine states
+        if not i == 0: # First datamine needs special handling for upper border
             upper_border_color = self.get_datamine_border_color(i - 1, i)
         elif i == 0:
             upper_border_color = self.get_datamine_border_color(None, i)
-        else:
-            upper_border_color = None
         
-        if not i == 2: # no normal lower border for last datamine
+        if not i == 2: # Last datamine needs special handling for lower border
             lower_border_color = self.get_datamine_border_color(i, i + 1)
         elif i == 2:
             lower_border_color = self.get_datamine_border_color(i, None)
-        else:
-            lower_border_color = None
             
+        # Draw both borders immediately after calculation
         if upper_border_color:
-            stdscr.addstr(y_base - 1, 41, "▀" * 45, curses.color_pair(upper_border_color))
+            stdscr.addstr(y_base - 1, 41, "▀" * 44, curses.color_pair(upper_border_color))
         if lower_border_color:
-            stdscr.addstr(y_base + 1, 41, "▀" * 45, curses.color_pair(lower_border_color))
+            stdscr.addstr(y_base + 1, 41, "▀" * 44, curses.color_pair(lower_border_color))
+        
+        stdscr.refresh()  # Force immediate display of borders
 
 
     def main(self, stdscr):
@@ -900,14 +926,125 @@ class game():
         # Final timer update and display before ending
         self.update_timer_if_needed(stdscr)
         stdscr.refresh()
+
+        if False:  # collapsable inactive debug block; change to True for debug display
+            stdscr.addstr(4, 1,  "▄", curses.color_pair(231))
+            stdscr.addstr(4, 2,  "▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀█", curses.color_pair(224))
+            stdscr.addstr(5, 1,  "▏ //ROOT                             ▕", curses.color_pair(224))
+            stdscr.addstr(6, 1,  "▏ //ACCESS_REQUEST                   ▕", curses.color_pair(224))
+            stdscr.addstr(7, 1,  "▏ //ACCESS_REQUEST_SUCCESS           ▕", curses.color_pair(224))
+            stdscr.addstr(8, 1,  "▏ //COLLECTING PACKET_1.....COMPLETE ▕", curses.color_pair(224))
+            stdscr.addstr(9, 1,  "▏ //COLLECTING PACKET_2.....COMPLETE ▕", curses.color_pair(224))
+            stdscr.addstr(10, 1, "▏ //COLLECTING PACKET_3.....COMPLETE ▕", curses.color_pair(224))
+            stdscr.addstr(11, 1, "▏ //COLLECTING PACKET_4.....COMPLETE ▕", curses.color_pair(224))
+            stdscr.addstr(12, 1, "▏ //LOGIN                            ▕", curses.color_pair(224))
+            stdscr.addstr(13, 1, "▏ //LOGIN_SUCCESS                    ▕", curses.color_pair(224))
+            stdscr.addstr(14, 1, "▏ //                                 ▕", curses.color_pair(224))
+            stdscr.addstr(15, 1, "▏ //UPLOAD_IN_PROGRESS               ▕", curses.color_pair(224))
+            stdscr.addstr(16, 1, "▏ //UPLOAD_COMPLETE!                 ▕", curses.color_pair(224))
+            stdscr.addstr(17, 1, "█▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄█", curses.color_pair(224))
+            stdscr.addstr(18, 1, "           DAEMONS UPLOADED           ", curses.color_pair(235))
+            stdscr.addstr(19, 1, "▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀", curses.color_pair(224))
+            
+            stdscr.addstr(4, 1,  "▄", curses.color_pair(232))
+            stdscr.addstr(4, 2,  "▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀█", curses.color_pair(223))
+            stdscr.addstr(5, 1,  "▏ //ROOT_ATTEMPT_1                   ▕", curses.color_pair(223))
+            stdscr.addstr(6, 1,  "▏ //ROOT_ATTEMPT_2                   ▕", curses.color_pair(223))
+            stdscr.addstr(7, 1,  "▏ //ROOT_ATTEMPT_3                   ▕", curses.color_pair(223))
+            stdscr.addstr(8, 1,  "▏ //ROOT_FAILED                      ▕", curses.color_pair(223))
+            stdscr.addstr(9, 1,  "▏ //ROOT_REBOOT                      ▕", curses.color_pair(223))
+            stdscr.addstr(10, 1, "▏ //ACCESSING.................FAILED ▕", curses.color_pair(223))
+            stdscr.addstr(11, 1, "▏ //ACCESSING.................FAILED ▕", curses.color_pair(223))
+            stdscr.addstr(12, 1, "▏ //ACCESSING.................FAILED ▕", curses.color_pair(223))
+            stdscr.addstr(13, 1, "▏ //ACCESSING.................FAILED ▕", curses.color_pair(223))
+            stdscr.addstr(14, 1, "▏                                    ▕", curses.color_pair(223))
+            stdscr.addstr(15, 1, "▏                                    ▕", curses.color_pair(223))
+            stdscr.addstr(16, 1, "▏                                    ▕", curses.color_pair(223))
+            stdscr.addstr(17, 1, "█▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄█", curses.color_pair(223))
+            stdscr.addstr(18, 1, "             BUFFER FULL              ", curses.color_pair(236))
+            stdscr.addstr(19, 1, "▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀", curses.color_pair(223))
+            
+            stdscr.refresh()
         
-        #if self.datamines:
-        #    stdscr.addstr(4, 2,   " CODE MATRIX                         ", curses.color_pair(235))
-        #
-        #stdscr.refresh()
+        text_matrixes = [
+        [
+            ["//ROOT"],
+            ["//ACCESS_REQUEST"],
+            ["//ACCESS_REQUEST_SUCCESS"],
+            ["//COLLECTING PACKET_1.....COMPLETE"],
+            ["//COLLECTING PACKET_2.....COMPLETE"],
+            ["//COLLECTING PACKET_3.....COMPLETE"],
+            ["//COLLECTING PACKET_4.....COMPLETE"],
+            ["//LOGIN"],
+            ["//LOGIN_SUCCESS"],
+            ["//"],
+            ["//UPLOAD_IN_PROGRESS"],
+            ["//UPLOAD_COMPLETE!"],
+            ["DAEMONS UPLOADED"]
+        ],
+        [
+            ["//ROOT_ATTEMPT_1"],
+            ["//ROOT_ATTEMPT_2"],
+            ["//ROOT_ATTEMPT_3"],
+            ["//ROOT_FAILED"],
+            ["//ROOT_REBOOT"],
+            ["//ACCESSING.................FAILED"],
+            ["//ACCESSING.................FAILED"],
+            ["//ACCESSING.................FAILED"],
+            ["//ACCESSING.................FAILED"],
+            ["BUFFER FULL"]
+        ]
+        ]
+
+        if any(self.completed_datamines):
+            main_color = 224
+            weird_bit_color = 231
+            lower_text_color = 235
+        else:
+            main_color = 223
+            weird_bit_color = 232
+            lower_text_color = 236
+        
+        stdscr.addstr(4, 1,  "▄", curses.color_pair(weird_bit_color))
+        stdscr.addstr(4, 2,  "▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀█", curses.color_pair(main_color))
+        stdscr.addstr(5, 1,  "▏                                    ▕", curses.color_pair(main_color))
+        stdscr.addstr(6, 1,  "▏                                    ▕", curses.color_pair(main_color))
+        stdscr.addstr(7, 1,  "▏                                    ▕", curses.color_pair(main_color))
+        stdscr.addstr(8, 1,  "▏                                    ▕", curses.color_pair(main_color))
+        stdscr.addstr(9, 1,  "▏                                    ▕", curses.color_pair(main_color))
+        stdscr.addstr(10, 1, "▏                                    ▕", curses.color_pair(main_color))
+        stdscr.addstr(11, 1, "▏                                    ▕", curses.color_pair(main_color))
+        stdscr.addstr(12, 1, "▏                                    ▕", curses.color_pair(main_color))
+        stdscr.addstr(13, 1, "▏                                    ▕", curses.color_pair(main_color))
+        stdscr.addstr(14, 1, "▏                                    ▕", curses.color_pair(main_color))
+        stdscr.addstr(15, 1, "▏                                    ▕", curses.color_pair(main_color))
+        stdscr.addstr(16, 1, "▏                                    ▕", curses.color_pair(main_color))
+        stdscr.addstr(17, 1, "█▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄█", curses.color_pair(main_color))
+        stdscr.addstr(18, 1, "                                      ", curses.color_pair(lower_text_color))
+        stdscr.addstr(19, 1, "▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀", curses.color_pair(main_color))
+        
+        stdscr.refresh()
+        
+        text_matrix = text_matrixes[0 if any(self.completed_datamines) else 1]
+        lower_text_len = len(text_matrix[-1][0])  # Access the string inside the nested list
+        total_space_available = 38
+        lower_text_offset = (total_space_available - lower_text_len) // 2
+        
+        for i, line in enumerate(text_matrix):
+            split_line = [*line[0]]
+
+            for j, char in enumerate(split_line):
+                if i < len(text_matrix) - 1:
+                    stdscr.addstr(5 + i, j + 3, char, curses.color_pair(main_color))
+                else:
+                    stdscr.addstr(18, j + lower_text_offset, char, curses.color_pair(lower_text_color))
+                stdscr.refresh()
+                time.sleep(0.025)
+
+        stdscr.refresh()
         
         time.sleep(10)
 
 if __name__ == "__main__":
-    game_instance = game()
+    game_instance = Game()
     curses.wrapper(game_instance.main)
