@@ -9,6 +9,8 @@ A fan-made, terminal-based remake of the **Breach Protocol** mini-game from *Cyb
 - Recreates the buffer-matching and sequence selection mechanic
 - Randomized game boards for replayability
 - Clean-ish Python code — depending on the level of autism easy to read and extend
+  
+  <img width="805" height="313" alt="grafik" src="https://github.com/user-attachments/assets/2acd72e5-622a-49ae-8e66-13abeb7fa527" />
 <br>
 
 ## How to Play
@@ -19,6 +21,9 @@ A fan-made, terminal-based remake of the **Breach Protocol** mini-game from *Cyb
 <br>
 
 ## Manual installation
+> ⚠️ It is important that the bagkground of the chosen terminal is #181818 for better looks though it is not nessecary
+> The color corresponds to the terminal bg of VsCode using the Dark Modern Theme
+
 1. Clone the repository:
 ```bash
 git clone https://github.com/da4games/Cyberpunk-Breach-Protocol-Mini-Game
@@ -56,7 +61,10 @@ python game.py
 2. Make sure you are either using the .venv or have pyinstaller and pillow installed on your python installation.
 <br>
 
-3. Run pyinstaller --onefile --noconfirm --strip --clean --console --hidden-import=windows-curses --icon=assets/icon.ico in the Terminal
+3. Run
+   ```bash
+   pyinstaller --onefile --noconfirm --strip --clean --console --hidden-import=windows-curses --icon=assets/icon.ico in the Terminal
+   ```
 <br>
 
 4. You can find the new .exe in /dist as it replaces the old one
