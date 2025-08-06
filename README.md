@@ -18,7 +18,7 @@ A fan-made, terminal-based remake of the **Breach Protocol** mini-game from *Cyb
 - Strategy and order matter — you only have a limited number of buffer slots!
 <br>
 
-## Installation
+## Manual installation
 1. Clone the repository:
 ```bash
 git clone https://github.com/da4games/Cyberpunk-Breach-Protocol-Mini-Game
@@ -47,6 +47,23 @@ pip install windows-curses
 ```bash
 python game.py
 ```
+<br>
+
+## Manual .exe buid
+1. Open a Terminal in the repository directory
+<br>
+
+2. Make sure you are either using the .venv or have pyinstaller and pillow installed on your python installation.
+<br>
+
+3. Run pyinstaller --onefile --noconfirm --strip --clean --console --hidden-import=windows-curses --icon=assets/icon.ico in the Terminal
+<br>
+
+4. You can find the new .exe in /dist as it replaces the old one
+<br>
+
+## Execution without installation
+- Just download the .exe and execute it on your device. I can not guarantee it will work on a non-windowsx64 device.
 <br>
 
 ## Inspiration / Sources
