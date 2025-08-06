@@ -2,4 +2,6 @@
     "python.analysis.diagnosticSeverityOverrides": {
     "reportAttributeAccessIssue": "none" //"infromation" makes it blue, "warning" makes it yellow, "error" makes it red
     },
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python-envs.pythonProjects": [],
 }

@@ -1,6 +1,8 @@
 import curses
 import random
+import sys
 import time
+import os
 
 #To-Do:
 # 1. update end-screen
@@ -59,78 +61,84 @@ class Game():
 
     def color_init(self, stdscr):
         """Initialize all color pairs for the cyberpunk-themed interface."""
-        curses.start_color()
-        curses.use_default_colors()
+        if curses.can_change_color() and curses.COLORS >= 256:
+            curses.start_color()
+            curses.use_default_colors()
 
-        # Base colors for the interface
-        default_bg_id = 21
-        default_fg_id = 22
-        very_exact_color_of_bg = 94
-        very_exact_color_of_fg = 898
-        curses.init_color(default_bg_id, very_exact_color_of_bg, very_exact_color_of_bg, very_exact_color_of_bg)
-        curses.init_color(default_fg_id, very_exact_color_of_fg, very_exact_color_of_fg, very_exact_color_of_fg)
-        curses.init_pair(default_bg_id, curses.COLOR_WHITE, default_bg_id)  # (fg=white, bg=default_bg)
+            # Base colors for the interface
+            default_bg_id = 21
+            default_fg_id = 22
+            very_exact_color_of_bg = 94
+            very_exact_color_of_fg = 898
+            curses.init_color(default_bg_id, very_exact_color_of_bg, very_exact_color_of_bg, very_exact_color_of_bg)
+            curses.init_color(default_fg_id, very_exact_color_of_fg, very_exact_color_of_fg, very_exact_color_of_fg)
+            curses.init_pair(default_bg_id, curses.COLOR_WHITE, default_bg_id)  # (fg=white, bg=default_bg)
 
-        # Cyberpunk green: rgb(53, 60, 22)
-        curses.init_color(277, 816, 925, 345)
-        curses.init_pair(255, 277, default_bg_id)  # (fg=green, bg=default_bg)
-        curses.init_pair(254, curses.COLOR_BLACK, 277)  # (fg=black, bg=green)
-        curses.init_pair(253, default_bg_id, 277)  # (fg=default_bg, bg=green)
+            # Cyberpunk green: rgb(53, 60, 22)
+            curses.init_color(277, 816, 925, 345)
+            curses.init_pair(255, 277, default_bg_id)  # (fg=green, bg=default_bg)
+            curses.init_pair(254, curses.COLOR_BLACK, 277)  # (fg=black, bg=green)
+            curses.init_pair(253, default_bg_id, 277)  # (fg=default_bg, bg=green)
 
-        # Dark gray-blue: rgb(41, 45, 57) # the gray bar in the matrix
-        curses.init_color(276, 161, 176, 224)
-        curses.init_pair(252, 277, 276)  # (fg=green, bg=dark_gray_blue)
-        curses.init_pair(251, default_bg_id, 276)  # (fg=default_bg, bg=dark_gray_blue)
-        curses.init_pair(250, 276, default_bg_id)  # (fg=dark_gray_blue, bg=default_bg)
-        curses.init_pair(241, curses.COLOR_WHITE, 276)  # (fg=white, bg=dark_gray_blue)
+            # Dark gray-blue: rgb(41, 45, 57) # the gray bar in the matrix
+            curses.init_color(276, 161, 176, 224)
+            curses.init_pair(252, 277, 276)  # (fg=green, bg=dark_gray_blue)
+            curses.init_pair(251, default_bg_id, 276)  # (fg=default_bg, bg=dark_gray_blue)
+            curses.init_pair(250, 276, default_bg_id)  # (fg=dark_gray_blue, bg=default_bg)
+            curses.init_pair(241, curses.COLOR_WHITE, 276)  # (fg=white, bg=dark_gray_blue)
 
-        # Cyan: rgb(139, 202, 202)
-        curses.init_color(275, 545, 788, 788)
-        curses.init_pair(249, 275, 276)  # (fg=cyan, bg=dark_gray_blue) --> selected cell in matrix
-        curses.init_pair(248, 275, default_bg_id)  # (fg=cyan, bg=default_bg)
+            # Cyan: rgb(139, 202, 202)
+            curses.init_color(275, 545, 788, 788)
+            curses.init_pair(249, 275, 276)  # (fg=cyan, bg=dark_gray_blue) --> selected cell in matrix
+            curses.init_pair(248, 275, default_bg_id)  # (fg=cyan, bg=default_bg)
 
-        # Dark gray: rgb(61, 65, 76)
-        curses.init_color(274, 239, 255, 302)
-        curses.init_pair(247, 274, 276)  # (fg=dark_gray, bg=dark_gray_blue)
-        curses.init_pair(246, 274, default_bg_id)  # (fg=dark_gray, bg=default_bg)
+            # Dark gray: rgb(61, 65, 76)
+            curses.init_color(274, 239, 255, 302)
+            curses.init_pair(247, 274, 276)  # (fg=dark_gray, bg=dark_gray_blue)
+            curses.init_pair(246, 274, default_bg_id)  # (fg=dark_gray, bg=default_bg)
 
-        # Dark green: rgb(31, 32, 26)
-        curses.init_color(273, 122, 125, 102)
-        curses.init_pair(245, 277, 273)  # (fg=green, bg=dark_green)
-        curses.init_pair(244, 273, default_bg_id)  # (fg=dark_green, bg=default_bg)
-        curses.init_pair(243, default_bg_id, 273)  # (fg=default_bg, bg=dark_green)
-        curses.init_pair(242, 273, 274)  # (fg=dark_green, bg=dark_gray)
+            # Dark green: rgb(31, 32, 26)
+            curses.init_color(273, 122, 125, 102)
+            curses.init_pair(245, 277, 273)  # (fg=green, bg=dark_green)
+            curses.init_pair(244, 273, default_bg_id)  # (fg=dark_green, bg=default_bg)
+            curses.init_pair(243, default_bg_id, 273)  # (fg=default_bg, bg=dark_green)
+            curses.init_pair(242, 273, 274)  # (fg=dark_green, bg=dark_gray)
 
-        # Very dark blue: rgb(24, 24, 42)
-        curses.init_color(272, 94, 94, 165)
-        curses.init_pair(240, curses.COLOR_WHITE, 272)  # (fg=white, bg=very_dark_blue)
-        curses.init_pair(239, 272, default_bg_id)  # (fg=very_dark_blue, bg=default_bg)
-        curses.init_pair(238, default_bg_id, 272)  # (fg=default_bg, bg=very_dark_blue)
-        curses.init_pair(237, 275, 272)  # (fg=cyan, bg=very_dark_blue)
+            # Very dark blue: rgb(24, 24, 42)
+            curses.init_color(272, 94, 94, 165)
+            curses.init_pair(240, curses.COLOR_WHITE, 272)  # (fg=white, bg=very_dark_blue)
+            curses.init_pair(239, 272, default_bg_id)  # (fg=very_dark_blue, bg=default_bg)
+            curses.init_pair(238, default_bg_id, 272)  # (fg=default_bg, bg=very_dark_blue)
+            curses.init_pair(237, 275, 272)  # (fg=cyan, bg=very_dark_blue)
 
-        # Failed red: rgb(253, 97, 81)
-        curses.init_color(271, 992, 380, 318)
-        # Success green: rgb(49, 211, 126)
-        curses.init_color(270, 192, 827, 498)
-        curses.init_pair(236, curses.COLOR_BLACK, 271)  # (fg=black, bg=failed_red)
-        curses.init_pair(235, curses.COLOR_BLACK, 270)  # (fg=black, bg=success_green)
-        curses.init_pair(234, default_bg_id, 271)  # (fg=default_bg, bg=failed_red)
-        curses.init_pair(233, default_bg_id, 270)  # (fg=default_bg, bg=success_green)
-        curses.init_pair(232, 271, default_bg_id)  # (fg=failed_red, bg=default_bg)
-        curses.init_pair(231, 270, default_bg_id)  # (fg=success_green, bg=default_bg)
-        curses.init_pair(230, 271, 270)  # (fg=failed_red, bg=success_green)
-        curses.init_pair(229, 270, 271)  # (fg=success_green, bg=failed_red)
-        curses.init_pair(228, 271, 271)  # (fg=failed_red, bg=failed_red)
-        curses.init_pair(227, 270, 270)  # (fg=success_green, bg=success_green) for Green-Green borders
-        
-        # Additional color pairs for border highlighting between datamines  
-        curses.init_pair(226, 270, 272)  # (fg=success_green, bg=very_dark_blue) for green datamine highlighting
-        curses.init_pair(225, 271, 272)  # (fg=failed_red, bg=very_dark_blue) for red datamine highlighting
-        
-        curses.init_color(269, 79, 145, 102)  # Custom darker green for finish screen
-        curses.init_pair(224, 270, 269)  # (fg=success_green, bg=darker_green)
-        curses.init_color(268, 224, 63, 55)  # Custom dark red for error messages
-        curses.init_pair(223, 271, 268)  # (fg=dark_red, bg=default_bg)
+            # Failed red: rgb(253, 97, 81)
+            curses.init_color(271, 992, 380, 318)
+            # Success green: rgb(49, 211, 126)
+            curses.init_color(270, 192, 827, 498)
+            curses.init_pair(236, curses.COLOR_BLACK, 271)  # (fg=black, bg=failed_red)
+            curses.init_pair(235, curses.COLOR_BLACK, 270)  # (fg=black, bg=success_green)
+            curses.init_pair(234, default_bg_id, 271)  # (fg=default_bg, bg=failed_red)
+            curses.init_pair(233, default_bg_id, 270)  # (fg=default_bg, bg=success_green)
+            curses.init_pair(232, 271, default_bg_id)  # (fg=failed_red, bg=default_bg)
+            curses.init_pair(231, 270, default_bg_id)  # (fg=success_green, bg=default_bg)
+            curses.init_pair(230, 271, 270)  # (fg=failed_red, bg=success_green)
+            curses.init_pair(229, 270, 271)  # (fg=success_green, bg=failed_red)
+            curses.init_pair(228, 271, 271)  # (fg=failed_red, bg=failed_red)
+            curses.init_pair(227, 270, 270)  # (fg=success_green, bg=success_green) for Green-Green borders
+            
+            # Additional color pairs for border highlighting between datamines  
+            curses.init_pair(226, 270, 272)  # (fg=success_green, bg=very_dark_blue) for green datamine highlighting
+            curses.init_pair(225, 271, 272)  # (fg=failed_red, bg=very_dark_blue) for red datamine highlighting
+            
+            curses.init_color(269, 79, 145, 102)  # Custom darker green for finish screen
+            curses.init_pair(224, 270, 269)  # (fg=success_green, bg=darker_green)
+            curses.init_color(268, 224, 63, 55)  # Custom dark red for error messages
+            curses.init_pair(223, 271, 268)  # (fg=dark_red, bg=default_bg)
+        else:
+            curses.endwin()
+            print("This terminal does not support 256 colors or color changes. You may use a different terminal.")
+            time.sleep(5)
+            sys.exit(0)
 
     def build_code_matrix(self, datamines):
         """
@@ -1046,5 +1054,12 @@ class Game():
         time.sleep(10)
 
 if __name__ == "__main__":
+    if not sys.stdout.isatty():
+        # Set console title
+        os.system('title Breach Protocol')
+
+        # Set console dimensions (must be >= curses requirements)
+        os.system('mode con: cols=90 lines=30')
+        
     game_instance = Game()
     curses.wrapper(game_instance.main)
