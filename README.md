@@ -4,6 +4,10 @@ A fan-made, terminal-based remake of the **Breach Protocol** mini-game from *Cyb
 > ⚠️ This is a non-commercial fan project. Not affiliated with CD Projekt RED.
 <br>
 
+## Notes
+- This games is made for Terminals using the consolas font (default for windows 11)
+- The game looks best when the terminal used has the background of #181818. This can be changed in colot_init in line 71 by seting it's value to a different one. The correct value can be calculated by converting normal rgb(0-255) to curses rgb(0-1000) (x/255*1000).
+
 ## Features
 - Terminal-based ASCII interface, no GUI required
 - Recreates the buffer-matching and sequence selection mechanic
