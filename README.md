@@ -63,8 +63,9 @@ python game.py
 
 3. Run
    ```bash
-   pyinstaller --onefile --noconfirm --strip --clean --console --hidden-import=windows-curses --icon=assets/icon.ico in the Terminal
+   pyinstaller --onefile --noconfirm --strip --clean --console --hidden-import=windows-curses --icon=assets/icon.ico game.py
    ```
+   in the Terminal
 <br>
 
 4. You can find the new .exe in /dist as it replaces the old one

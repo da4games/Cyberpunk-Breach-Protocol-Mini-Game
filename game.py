@@ -887,8 +887,8 @@ class Game():
 
         # Check minimum screen size
         max_y, max_x = stdscr.getmaxyx()
-        if max_y < 16 or max_x < 84:
-            stdscr.addstr(0, 0, "Screen size too small. Minimum size is 14 rows and 84 columns.", curses.color_pair(1))
+        if max_y < 19 or max_x < 85:
+            stdscr.addstr(0, 0, "Screen size too small. Minimum size is 19 rows and 85 columns.", curses.color_pair(1))
             stdscr.refresh()
             stdscr.getch()
 
@@ -1054,12 +1054,53 @@ class Game():
         time.sleep(10)
 
 if __name__ == "__main__":
-    if not sys.stdout.isatty():
-        # Set console title
-        os.system('title Breach Protocol')
+    # --- Cross-platform console window detection and setup ---
+    def should_set_console_title_and_size():
+        # Windows-specific: check for real console window
+        if os.name == "nt":
+            try:
+                import ctypes
+                GetConsoleWindow = ctypes.windll.kernel32.GetConsoleWindow
+                GetWindowThreadProcessId = ctypes.windll.user32.GetWindowThreadProcessId
+                hwnd = GetConsoleWindow()
+                if hwnd:
+                    import os as _os
+                    pid = ctypes.c_ulong()
+                    GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+                    if pid.value == _os.getpid():
+                        return True  # Real, own console window
+            except Exception:
+                pass
+            # Fallback: check for classic terminal via env vars
+            env = os.environ
+            if (
+                sys.stdout.isatty() and
+                'WT_SESSION' not in env and
+                'TERM_PROGRAM' not in env and
+                'VSCODE_PID' not in env
+            ):
+                return True
+            return False
+        else:
+            # On Linux/Mac: avoid VS Code/modern terminals
+            env = os.environ
+            if (
+                sys.stdout.isatty() and
+                'WT_SESSION' not in env and
+                'TERM_PROGRAM' not in env and
+                'VSCODE_PID' not in env
+            ):
+                return True
+            return False
 
-        # Set console dimensions (must be >= curses requirements)
-        os.system('mode con: cols=90 lines=30')
+    if should_set_console_title_and_size():
+        if os.name == "nt":
+            os.system('title Breach Protocol')
+            os.system('mode con: cols=90 lines=20')
+        else:
+            # On Linux/Mac, optionally set terminal title (if supported)
+            sys.stdout.write("\x1b]2;Breach Protocol\x07")
+            sys.stdout.flush()
         
     game_instance = Game()
     curses.wrapper(game_instance.main)
