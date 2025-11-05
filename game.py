@@ -59,6 +59,10 @@ class Game():
         self.timer_update_interval = 0.01  # Update every 10ms
         self.animating = False  # Flag to prevent timer refreshes during animations
 
+    def reset_game(self):
+        """Reset all game state to initial values for a new round."""
+        self.__init__()
+
     def color_init(self, stdscr):
         """Initialize all color pairs for the cyberpunk-themed interface."""
         if curses.can_change_color() and curses.COLORS >= 256:
@@ -913,6 +917,10 @@ class Game():
             except curses.error:
                 x, y, button = -1, -1, 0
 
+            # Handle ESC key during gameplay
+            if key == 27:  # ESC key
+                return False  # Signal to quit immediately
+
             if key == curses.KEY_MOUSE:
                 if button & (curses.BUTTON1_PRESSED | curses.BUTTON1_CLICKED):
                     check, location, self.finished_by_completion = self.update_gui(stdscr, self.active_axis, self.last_selected, self.hovering, clicked=True)
@@ -1051,8 +1059,30 @@ class Game():
 
         stdscr.refresh()
         
-        time.sleep(10)
-
+        # Auto-restart countdown with manual override
+        countdown_time = 5.0
+        start_countdown = time.time()
+        stdscr.nodelay(True)  # Non-blocking input for countdown
+        
+        while True:
+            elapsed = time.time() - start_countdown
+            remaining = countdown_time - elapsed
+            
+            if remaining <= 0:
+                return True  # Auto-restart after countdown
+            
+            # Display countdown message
+            stdscr.addstr(0, 42, f"Restarting in {remaining:.1f}s - Press any key to restart now, ESC to quit", curses.color_pair(255))
+            stdscr.refresh()
+            
+            key = stdscr.getch()
+            if key == 27:  # ESC key
+                return False  # Signal to quit
+            elif key != -1:  # Any other key pressed
+                return True   # Signal to restart immediately
+            
+            time.sleep(0.1)  # Small delay to avoid excessive CPU usage
+    
 if __name__ == "__main__":
     # --- Cross-platform console window detection and setup ---
     def should_set_console_title_and_size():
@@ -1103,4 +1133,11 @@ if __name__ == "__main__":
             sys.stdout.flush()
         
     game_instance = Game()
-    curses.wrapper(game_instance.main)
+    while True:
+        try:
+            should_continue = curses.wrapper(game_instance.main)
+            if not should_continue:
+                break  # User pressed ESC to quit
+            game_instance.reset_game()  # Reset for next round
+        except KeyboardInterrupt:
+            break  # Allow Ctrl+C to quit
