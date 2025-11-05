@@ -1029,7 +1029,7 @@ class Game():
         stdscr.addstr(16, 1, "▏                                    ▕", curses.color_pair(main_color))
         stdscr.addstr(17, 1, "█▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄█", curses.color_pair(main_color))
         stdscr.addstr(18, 1, "                                      ", curses.color_pair(lower_text_color))
-        stdscr.addstr(19, 1, "▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀", curses.color_pair(main_color))
+        stdscr.addstr(19, 1, "▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀", curses.color_pair(weird_bit_color))
         
         stdscr.refresh()
         
