@@ -67,12 +67,41 @@ python game.py
 
 3. Run
    ```bash
-   pyinstaller --onefile --noconfirm --strip --clean --console --hidden-import=windows-curses --icon=assets/icon.ico game.py
+   pyinstaller --onefile --noconfirm --strip --clean --console --hidden-import=windows-curses --name="breach-protocol" --icon=assets/icon.ico game.py
    ```
    in the Terminal
 <br>
 
 4. You can find the new .exe in /dist as it replaces the old one
+<br>
+
+## Manual Linux executable build
+1. Open a Terminal in the repository directory
+<br>
+
+2. Install PyInstaller system-wide using the package manager:
+   ```bash
+   sudo apt update && sudo apt install python3-pyinstaller
+   ```
+<br>
+
+3. Run the compilation command:
+   ```bash
+   python3 -m PyInstaller --onefile --noconfirm --strip --clean --console --name="breach-protocol" --icon=assets/icon.ico game.py
+   ```
+   in the Terminal
+<br>
+
+4. You can find the new executable in `/dist/breach-protocol`
+   - The executable is self-contained and doesn't require Python to be installed on the target system
+   - Compatible with ARM64 and x64 Linux systems (depending on your build architecture)
+<br>
+
+5. To run the executable:
+   ```bash
+   cd dist
+   ./breach-protocol
+   ```
 <br>
 
 ## Execution without installation
