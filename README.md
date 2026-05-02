@@ -24,8 +24,12 @@ A fan-made, terminal-based remake of the **Breach Protocol** mini-game from *Cyb
 - Strategy and order matter — you only have a limited number of buffer slots!
 <br>
 
+## Execution without installation
+- Just download the .exe and execute it on your device. I can not guarantee it will work on a non-windowsx64 device.
+<br>
+
 ## Manual installation
-> ⚠️ It is important that the bagkground of the chosen terminal is #181818 for better looks though it is not nessecary
+> ⚠️ It is important that the bagkground of the chosen terminal is #181818 for better looks though it is not nessecary. <br>
 > The color corresponds to the terminal bg of VsCode using the Dark Modern Theme
 
 1. Clone the repository:
@@ -102,10 +106,6 @@ python game.py
    cd dist
    ./breach-protocol
    ```
-<br>
-
-## Execution without installation
-- Just download the .exe and execute it on your device. I can not guarantee it will work on a non-windowsx64 device.
 <br>
 
 ## Inspiration / Sources
