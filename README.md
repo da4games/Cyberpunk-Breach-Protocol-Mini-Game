@@ -58,7 +58,7 @@ python game.py
 ```
 <br>
 
-## Manual .exe buid
+## Manual .exe build
 1. Open a Terminal in the repository directory
 <br>
 
